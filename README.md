@@ -215,10 +215,11 @@ RiiakLinks can be dereferenced to the linked object using the RiiakLink::get() m
 This method returns a [RiiakObject](https://bitbucket.org/intel352/riiak/wiki/class/RiiakObject)
 
 ## Fetching Data With Map/Reduce ##
-Data can be fetched by Map and Reduce using the Riiak::add() method
+Data can be fetched by Map and Reduce using the Riiak::getMapReduce() method
 
     # Fetch a sorted list of all keys in a bucket
-    $result = $client->add($bucket->name)
+    $result = $client->getMapReduce() // or $client->mapReduce using magic getter
+        ->addBucket($bucket)
     	->map('function (v) { return [v.key]; }')
     	->reduce('Riak.reduceSort')
     	->run();
