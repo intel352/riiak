@@ -56,7 +56,7 @@ class RiiakObject extends CComponent {
      *
      * @var string|array
      */
-    public $data;
+    protected $data;
 
     /**
      * Construct a new RiiakObject
@@ -97,6 +97,26 @@ class RiiakObject extends CComponent {
      */
     public function setContentType($contentType) {
         $this->headers['content-type'] = $contentType;
+        return $this;
+    }
+
+    /**
+     * Returns the object's data
+     *
+     * @return string|array
+     */
+    public function getData() {
+        return $this->data;
+    }
+
+    /**
+     * Set the object's data
+     *
+     * @param string|array $data The new data value
+     * @return RiiakObject
+     */
+    public function setData($data) {
+        $this->data = $data;
         return $this;
     }
     
