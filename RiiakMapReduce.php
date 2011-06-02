@@ -17,8 +17,10 @@ class RiiakMapReduce extends CComponent {
      */
     public $phases = array();
     /**
+     * Bucket name (string) or array of inputs
+     * If bucket name, then all keys of bucket will be used as inputs (expensive)
      *
-     * @var array
+     * @var string|array
      */
     public $inputs = array();
     /**
@@ -31,10 +33,24 @@ class RiiakMapReduce extends CComponent {
         $this->client = $client;
     }
 
+    /**
+     * Adds object's bucket name and key will be added to m/r inputs
+     *
+     * @param RiiakObject $obj
+     * @return RiiakMapReduce
+     */
     public function addObject(RiiakObject $obj) {
         return $this->addBucketKeyData($obj->bucket->name, $obj->key, NULL);
     }
 
+    /**
+     * Adds bucket, key, and optional data to m/r inputs
+     *
+     * @param string $bucket Bucket name
+     * @param string $key Key name
+     * @param string $data
+     * @return RiiakMapReduce
+     */
     public function addBucketKeyData($bucket, $key, $data=null) {
         if ($this->inputMode == 'bucket')
             throw new Exception('Already added a bucket, can\'t add an object.');
@@ -42,7 +58,14 @@ class RiiakMapReduce extends CComponent {
         return $this;
     }
 
-    public function addBucket(RiiakBucket $bucket) {
+    /**
+     * Adds bucket to m/r inputs
+     * Means all of the bucket's keys will be used as inputs (expensive)
+     *
+     * @param string $bucket Bucket name
+     * @return RiiakMapReduce 
+     */
+    public function addBucket($bucket) {
         $this->inputMode = 'bucket';
         $this->inputs = $bucket;
         return $this;

@@ -4,11 +4,16 @@
 This is a PHP client for Riak, built as an extension for Yii Framework.
 Ported from Basho's official PHP client.
 
+## Helpful Links ##
+Yii Framework Riiak extension page<br/>
+<http://www.yiiframework.com/extension/riiak/>
+
+Yii Framework Riiak discussion thread<br/>
+<http://www.yiiframework.com/forum/index.php?/topic/20090-riiak/>
+
 ## Documentation ##
 API documentation for this library can be found at<br/>
 <https://bitbucket.org/intel352/riiak/wiki>
-
-(See **Documentation Maintenance** at the bottom of the README for instructions on updating the docs.)
 
 Documentation for use of Riak clients in general can be found at<br/>
 <https://wiki.basho.com/display/RIAK/Client+Libraries>
