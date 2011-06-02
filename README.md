@@ -224,7 +224,7 @@ Data can be fetched by Map and Reduce using the Riiak::getMapReduce() method
 
     # Fetch a sorted list of all keys in a bucket
     $result = $client->getMapReduce() // or $client->mapReduce using magic getter
-        ->addBucket($bucket)
+        ->addBucket($bucket->name) // addBucket expects string, bucket name
     	->map('function (v) { return [v.key]; }')
     	->reduce('Riak.reduceSort')
     	->run();
