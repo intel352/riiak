@@ -25,19 +25,19 @@ class RiiakBucket extends CComponent {
      *
      * @var int
      */
-    protected $r;
+    protected $_r;
     /**
      * W-Value
      *
      * @var int
      */
-    protected $w;
+    protected $_w;
     /**
      * DW-Value
      *
      * @var int
      */
-    protected $dw;
+    protected $_dw;
 
     public function __construct(Riiak $client, $name) {
         $this->client = $client;
@@ -53,8 +53,8 @@ class RiiakBucket extends CComponent {
     public function getR($r=null) {
         if ($r != null)
             return $r;
-        if ($this->r != null)
-            return $this->r;
+        if ($this->_r != null)
+            return $this->_r;
         return $this->client->r;
     }
 
@@ -66,7 +66,7 @@ class RiiakBucket extends CComponent {
      * @return RiiakBucket
      */
     public function setR($r) {
-        $this->r = $r;
+        $this->_r = $r;
         return $this;
     }
 
@@ -79,8 +79,8 @@ class RiiakBucket extends CComponent {
     public function getW($w) {
         if ($w != null)
             return $w;
-        if ($this->w != null)
-            return $this->w;
+        if ($this->_w != null)
+            return $this->_w;
         return $this->client->w;
     }
 
@@ -92,7 +92,7 @@ class RiiakBucket extends CComponent {
      * @return RiiakBucket 
      */
     public function setW($w) {
-        $this->w = $w;
+        $this->_w = $w;
         return $this;
     }
 
@@ -105,8 +105,8 @@ class RiiakBucket extends CComponent {
     public function getDW($dw) {
         if ($dw != null)
             return $dw;
-        if ($this->dw != null)
-            return $this->dw;
+        if ($this->_dw != null)
+            return $this->_dw;
         return $this->client->dw;
     }
 
@@ -118,7 +118,7 @@ class RiiakBucket extends CComponent {
      * @return RiiakBucket
      */
     public function setDW($dw) {
-        $this->dw = $dw;
+        $this->_dw = $dw;
         return $this;
     }
 

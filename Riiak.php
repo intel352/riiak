@@ -69,7 +69,7 @@ class Riiak extends CApplicationComponent {
     /**
      * @var RiiakMapReduce
      */
-    protected $mr;
+    protected $_mr;
 
     public function init() {
         parent::init();
@@ -121,9 +121,9 @@ class Riiak extends CApplicationComponent {
      * @return RiiakMapReduce
      */
     public function getMapReduce($reset=false) {
-        if ($reset || !($this->mr instanceof RiiakMapReduce))
-            $this->mr = new RiiakMapReduce($this);
-        return $this->mr;
+        if ($reset || !($this->_mr instanceof RiiakMapReduce))
+            $this->_mr = new RiiakMapReduce($this);
+        return $this->_mr;
     }
 
 }

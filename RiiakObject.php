@@ -42,21 +42,21 @@ class RiiakObject extends CComponent {
      *
      * @var array
      */
-    protected $links=array();
+    protected $_links=array();
     public $siblings=null;
     /**
      * Whether the object exists
      *
      * @var bool
      */
-    protected $exists=false;
+    protected $_exists=false;
     /**
      * If constructed by newBinary|getBinary, returns string, else array.
      * If not a string, will be JSON encoded when stored
      *
      * @var string|array
      */
-    protected $data;
+    protected $_data;
 
     /**
      * Construct a new RiiakObject
@@ -106,7 +106,7 @@ class RiiakObject extends CComponent {
      * @return string|array
      */
     public function getData() {
-        return $this->data;
+        return $this->_data;
     }
 
     /**
@@ -116,7 +116,7 @@ class RiiakObject extends CComponent {
      * @return RiiakObject
      */
     public function setData($data) {
-        $this->data = $data;
+        $this->_data = $data;
         return $this;
     }
     
@@ -126,7 +126,7 @@ class RiiakObject extends CComponent {
      * @return bool 
      */
     public function getExists() {
-        return $this->exists;
+        return $this->_exists;
     }
 
     /**
@@ -143,7 +143,7 @@ class RiiakObject extends CComponent {
             $newlink = new RiiakLink($obj->bucket->name, $obj->key, $tag);
 
         $this->removeLink($newlink);
-        $this->links[] = $newlink;
+        $this->_links[] = $newlink;
 
         return $this;
     }
@@ -161,9 +161,9 @@ class RiiakObject extends CComponent {
         else
             $oldlink = new RiiakLink($obj->bucket->name, $obj->key, $tag);
 
-        foreach ($this->links as $k=>$link)
+        foreach ($this->_links as $k=>$link)
             if (!$link->isEqual($oldlink))
-                unset($this->links[$k]);
+                unset($this->_links[$k]);
 
         return $this;
     }
@@ -177,9 +177,9 @@ class RiiakObject extends CComponent {
         /**
          * Set the clients before returning
          */
-        foreach ($this->links as $link)
+        foreach ($this->_links as $link)
             $link->client = $this->client;
-        return $this->links;
+        return $this->_links;
     }
 
     /**
@@ -220,13 +220,13 @@ class RiiakObject extends CComponent {
         /**
          * Add the Links
          */
-        foreach ($this->links as $link)
+        foreach ($this->_links as $link)
             $headers[] = 'Link: ' . $link->toLinkHeader($this->client);
 
         if ($this->jsonize)
-            $content = CJSON::encode($this->data);
+            $content = CJSON::encode($this->_data);
         else
-            $content = $this->data;
+            $content = $this->_data;
 
         $method = $this->key ? 'PUT' : 'POST';
 
@@ -260,7 +260,7 @@ class RiiakObject extends CComponent {
          */
         if ($this->getHasSiblings()) {
             $obj = $this->getSibling(0);
-            $this->data=$obj->data;
+            $this->_data=$obj->data;
         }
 
         return $this;
@@ -300,9 +300,9 @@ class RiiakObject extends CComponent {
      */
     private function clear() {
         $this->headers = array();
-        $this->links = array();
-        $this->data = null;
-        $this->exists = FALSE;
+        $this->_links = array();
+        $this->_data = null;
+        $this->_exists = false;
         $this->siblings = null;
         return $this;
     }
@@ -339,7 +339,7 @@ class RiiakObject extends CComponent {
          * Update the object
          */
         $this->headers = $response['headers'];
-        $this->data = $response['body'];
+        $this->_data = $response['body'];
 
         /**
          * Check if the server is down (status==0)
@@ -364,7 +364,7 @@ class RiiakObject extends CComponent {
         /**
          * If we are here, then the object exists
          */
-        $this->exists = true;
+        $this->_exists = true;
 
         /**
          * Parse the link header
@@ -376,10 +376,10 @@ class RiiakObject extends CComponent {
          * If 300 (siblings), load first sibling, store the rest
          */
         if ($this->status == 300) {
-            $siblings = explode("\n", trim($this->data));
+            $siblings = explode("\n", trim($this->_data));
             array_shift($siblings); # Get rid of 'Siblings:' string.
             $this->siblings = $siblings;
-            $this->exists = TRUE;
+            $this->_exists = true;
             return $this;
         }
 
@@ -392,7 +392,7 @@ class RiiakObject extends CComponent {
          * Possibly JSON decode
          */
         if (($this->status == 200 || $this->status == 201) && $this->jsonize)
-            $this->data = CJSON::decode($this->data, true);
+            $this->_data = CJSON::decode($this->_data, true);
 
         return $this;
     }
@@ -406,7 +406,7 @@ class RiiakObject extends CComponent {
         $linkHeaders = explode(',', trim($linkHeaders));
         foreach ($linkHeaders as $linkHeader)
             if (preg_match('/\<\/([^\/]+)\/([^\/]+)\/([^\/]+)\>; ?riaktag="([^"]+)"/', trim($linkHeader), $matches))
-                $this->links[] = new RiiakLink($matches[2], $matches[3], $matches[4]);
+                $this->_links[] = new RiiakLink($matches[2], $matches[3], $matches[4]);
 
         return $this;
     }

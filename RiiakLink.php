@@ -24,7 +24,7 @@ class RiiakLink extends CComponent {
      *
      * @var string
      */
-    protected $tag=null;
+    protected $_tag=null;
     /**
      * Client instance
      *
@@ -42,7 +42,7 @@ class RiiakLink extends CComponent {
     public function __construct($bucket, $key, $tag=null) {
         $this->bucket = $bucket;
         $this->key = $key;
-        $this->tag = $tag;
+        $this->_tag = $tag;
     }
 
     /**
@@ -71,7 +71,7 @@ class RiiakLink extends CComponent {
      * @return string
      */
     public function getTag() {
-        return $this->tag?:$this->bucket;
+        return $this->_tag?:$this->bucket;
     }
 
     /**
@@ -81,7 +81,7 @@ class RiiakLink extends CComponent {
      * @return RiiakLink
      */
     public function setTag($tag) {
-        $this->tag = $tag;
+        $this->_tag = $tag;
         return $this;
     }
 
