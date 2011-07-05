@@ -30,8 +30,8 @@ or as source from<br/>
 <http://github.com/basho/riak/>
 
 ## Requirements ##
-Yii 1.1+ (Yii 1.1.7+ recommended, lower releases should be compatible, but are untested)
-PHP 5.3+ (Riiak library is namespaced, which is a PHP 5.3 feature)
+* Yii 1.1+ (Yii 1.1.7+ recommended, lower releases should be compatible, but are untested)
+* PHP 5.3+ (Riiak library is namespaced, which is a PHP 5.3 feature)
 
 ## Installation ##
 Clone this repository to fetch the latest version of this client
