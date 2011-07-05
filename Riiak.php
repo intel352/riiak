@@ -1,10 +1,13 @@
 <?php
 
+namespace riiak;
+use \CApplicationComponent, \CJSON;
+
 /**
  * The Riiak object holds information necessary to connect to
  * Riak. The Riak API uses HTTP, so there is no persistent
  * connection, and the Riiak object is extremely lightweight.
- * @package Riiak
+ * @package riiak
  */
 class Riiak extends CApplicationComponent {
 
@@ -67,7 +70,7 @@ class Riiak extends CApplicationComponent {
      */
     public $dw = 2;
     /**
-     * @var RiiakMapReduce
+     * @var \riiak\MapReduce
      */
     protected $_mr;
 
@@ -84,19 +87,19 @@ class Riiak extends CApplicationComponent {
      * Get bucket by name
      *
      * @param string $name
-     * @return RiiakBucket 
+     * @return \riiak\Bucket 
      */
     public function bucket($name) {
-        return new RiiakBucket($this, $name);
+        return new Bucket($this, $name);
     }
 
     /**
-     * Return array of RiiakBucket objects
+     * Return array of Bucket objects
      *
      * @return array
      */
     public function buckets() {
-        $response = RiiakUtils::httpRequest('GET', RiiakUtils::buildRestPath($this) . '?buckets=true');
+        $response = Utils::httpRequest('GET', Utils::buildRestPath($this) . '?buckets=true');
         $responseObj = CJSON::decode($response['body']);
         $buckets = array();
         foreach ($responseObj->buckets as $name)
@@ -110,19 +113,19 @@ class Riiak extends CApplicationComponent {
      * @return bool
      */
     public function getIsAlive() {
-        $response = RiiakUtils::httpRequest('GET', RiiakUtils::buildUrl($this) . '/ping');
+        $response = Utils::httpRequest('GET', Utils::buildUrl($this) . '/ping');
         return ($response != NULL) && ($response['body'] == 'OK');
     }
 
     /**
-     * Returns the RiiakMapReduce instance (created if not exists)
+     * Returns the MapReduce instance (created if not exists)
      *
-     * @param bool $reset Whether to create a new RiiakMapReduce instance
-     * @return RiiakMapReduce
+     * @param bool $reset Whether to create a new MapReduce instance
+     * @return \riiak\MapReduce
      */
     public function getMapReduce($reset=false) {
-        if ($reset || !($this->_mr instanceof RiiakMapReduce))
-            $this->_mr = new RiiakMapReduce($this);
+        if ($reset || !($this->_mr instanceof MapReduce))
+            $this->_mr = new MapReduce($this);
         return $this->_mr;
     }
 

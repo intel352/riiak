@@ -1,27 +1,30 @@
 <?php
 
+namespace riiak;
+use \CComponent, \CJSON, \Exception;
+
 /**
- * The RiiakObject holds meta information about a Riak object, plus the
+ * The Object holds meta information about a Riak object, plus the
  * object's data.
- * @package RiiakObject
+ * @package riiak
  * 
  * Magic properties
  * 
  * Private
  * @property string vclock
  */
-class RiiakObject extends CComponent {
+class Object extends CComponent {
     
     /**
      * Client instance
      *
-     * @var Riiak
+     * @var \riiak\Riiak
      */
     public $client;
     /**
      * Bucket
      *
-     * @var RiiakBucket
+     * @var \riiak\Bucket
      */
     public $bucket;
     /**
@@ -38,7 +41,7 @@ class RiiakObject extends CComponent {
     public $jsonize=true;
     public $headers=array();
     /**
-     * Array of RiiakLinks
+     * Array of Links
      *
      * @var array
      */
@@ -51,21 +54,21 @@ class RiiakObject extends CComponent {
      */
     protected $_exists=false;
     /**
-     * If constructed by newBinary|getBinary, returns string, else array.
+     * If constructed by newBinary|getBinary, returns string.
      * If not a string, will be JSON encoded when stored
      *
-     * @var string|array
+     * @var mixed
      */
     protected $_data;
 
     /**
-     * Construct a new RiiakObject
+     * Construct a new Object
      *
-     * @param Riiak $client A Riiak object
-     * @param RiiakBucket $bucket A RiiakBucket object
+     * @param \riiak\Riiak $client A Riiak object
+     * @param \riiak\Bucket $bucket A Bucket object
      * @param string $key Optional - If empty, generated upon store()
      */
-    public function __construct(Riiak $client,RiiakBucket $bucket, $key=null) {
+    public function __construct(Riiak $client,Bucket $bucket, $key=null) {
         $this->client = $client;
         $this->bucket = $bucket;
         $this->key = $key;
@@ -93,7 +96,7 @@ class RiiakObject extends CComponent {
      * Set the object's content type
      *
      * @param string $contentType The new content type
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     public function setContentType($contentType) {
         $this->headers['content-type'] = $contentType;
@@ -103,7 +106,7 @@ class RiiakObject extends CComponent {
     /**
      * Returns the object's data
      *
-     * @return string|array
+     * @return mixed
      */
     public function getData() {
         return $this->_data;
@@ -112,8 +115,8 @@ class RiiakObject extends CComponent {
     /**
      * Set the object's data
      *
-     * @param string|array $data The new data value
-     * @return RiiakObject
+     * @param mixed $data The new data value
+     * @return \riiak\Object
      */
     public function setData($data) {
         $this->_data = $data;
@@ -130,17 +133,17 @@ class RiiakObject extends CComponent {
     }
 
     /**
-     * Add a link to a RiiakObject
+     * Add a link to a Object
      *
-     * @param RiiakLink|RiiakObject $obj Either RiiakObject or RiiakLink
-     * @param string $tag Optional: link tag. Default: bucket name. Ignored for RiiakLink
-     * @return RiiakObject 
+     * @param \riiak\Link|\riiak\Object $obj Either Object or Link
+     * @param string $tag Optional: link tag. Default: bucket name. Ignored for Link
+     * @return \riiak\Object 
      */
     public function addLink($obj, $tag=null) {
-        if ($obj instanceof RiiakLink)
+        if ($obj instanceof Link)
             $newlink = $obj;
         else
-            $newlink = new RiiakLink($obj->bucket->name, $obj->key, $tag);
+            $newlink = new Link($obj->bucket->name, $obj->key, $tag);
 
         $this->removeLink($newlink);
         $this->_links[] = $newlink;
@@ -149,17 +152,17 @@ class RiiakObject extends CComponent {
     }
 
     /**
-     * Remove a link to a RiiakObject
+     * Remove a link to a Object
      *
-     * @param RiiakLink|RiiakObject $obj Either RiiakObject or RiiakLink
-     * @param string $tag Optional: link tag. Default: bucket name. Ignored for RiiakLink
-     * @return RiiakObject 
+     * @param \riiak\Link|\riiak\Object $obj Either Object or Link
+     * @param string $tag Optional: link tag. Default: bucket name. Ignored for Link
+     * @return \riiak\Object 
      */
     public function removeLink($obj, $tag=null) {
-        if ($obj instanceof RiiakLink)
+        if ($obj instanceof Link)
             $oldlink = $obj;
         else
-            $oldlink = new RiiakLink($obj->bucket->name, $obj->key, $tag);
+            $oldlink = new Link($obj->bucket->name, $obj->key, $tag);
 
         foreach ($this->_links as $k=>$link)
             if (!$link->isEqual($oldlink))
@@ -169,7 +172,7 @@ class RiiakObject extends CComponent {
     }
 
     /**
-     * Return an array of RiiakLink objects
+     * Return an array of Link objects
      *
      * @return array
      */
@@ -189,7 +192,7 @@ class RiiakObject extends CComponent {
      *
      * @param int $w W-Value: X paritions must respond before returning
      * @param int $dw DW-Value: X partitions must confirm write before returning
-     * @return RiiakObject 
+     * @return \riiak\Object 
      */
     public function store($w=null, $dw=null) {
         /**
@@ -202,7 +205,7 @@ class RiiakObject extends CComponent {
          * Construct the URL
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
-        $url = RiiakUtils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
 
         /**
          * Construct the headers
@@ -233,7 +236,7 @@ class RiiakObject extends CComponent {
         /**
          * Run the operation
          */
-        $response = RiiakUtils::httpRequest($method, $url, $headers, $content);
+        $response = Utils::httpRequest($method, $url, $headers, $content);
         $this->populate($response, array(200, 201, 300));
         return $this;
     }
@@ -244,15 +247,15 @@ class RiiakObject extends CComponent {
      * in Riak since it was last retrieved.
      *
      * @param int $r R-Value: X partitions must respond before returning
-     * @return RiiakObject 
+     * @return \riiak\Object 
      */
     public function reload($r=null) {
         /**
          * Do the request
          */
         $params = array('r' => $this->bucket->getR($r));
-        $url = RiiakUtils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-        $response = RiiakUtils::httpRequest('GET', $url);
+        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $response = Utils::httpRequest('GET', $url);
         $this->populate($response, array(200, 300, 404));
 
         /**
@@ -270,7 +273,7 @@ class RiiakObject extends CComponent {
      * Delete this object from Riak
      *
      * @param int $dw DW-Value: X partitions must delete object before returning
-     * @return RiiakObject 
+     * @return \riiak\Object 
      */
     public function delete($dw=null) {
         /**
@@ -282,12 +285,12 @@ class RiiakObject extends CComponent {
          * Construct the URL
          */
         $params = array('dw' => $dw);
-        $url = RiiakUtils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
 
         /**
          * Run the operation
          */
-        $response = RiiakUtils::httpRequest('DELETE', $url);
+        $response = Utils::httpRequest('DELETE', $url);
         $this->populate($response, array(204, 404));
 
         return $this;
@@ -296,7 +299,7 @@ class RiiakObject extends CComponent {
     /**
      * Reset this object
      *
-     * @return RiiakObject 
+     * @return \riiak\Object 
      */
     private function clear() {
         $this->headers = array();
@@ -322,9 +325,9 @@ class RiiakObject extends CComponent {
     /**
      * Populates the object. Only for internal use
      *
-     * @param array $response Output of RiiakUtils::httpRequest
+     * @param array $response Output of Utils::httpRequest
      * @param array $expectedStatuses List of statuses
-     * @return RiiakObject 
+     * @return \riiak\Object 
      */
     public function populate($response, $expectedStatuses) {
         $this->clear();
@@ -345,7 +348,7 @@ class RiiakObject extends CComponent {
          * Check if the server is down (status==0)
          */
         if ($this->status == 0)
-            throw new Exception('Could not contact Riak Server: ' . RiiakUtils::buildUrl($this->client) . '!');
+            throw new Exception('Could not contact Riak Server: ' . Utils::buildUrl($this->client) . '!');
 
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
@@ -400,13 +403,13 @@ class RiiakObject extends CComponent {
     /**
      * Populate object links
      * 
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     private function populateLinks($linkHeaders) {
         $linkHeaders = explode(',', trim($linkHeaders));
         foreach ($linkHeaders as $linkHeader)
             if (preg_match('/\<\/([^\/]+)\/([^\/]+)\/([^\/]+)\>; ?riaktag="([^"]+)"/', trim($linkHeader), $matches))
-                $this->_links[] = new RiiakLink($matches[2], $matches[3], $matches[4]);
+                $this->_links[] = new Link($matches[2], $matches[3], $matches[4]);
 
         return $this;
     }
@@ -434,7 +437,7 @@ class RiiakObject extends CComponent {
      *
      * @param int $i Sibling number
      * @param int $r R-Value: X partitions must respond before returning
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     public function getSibling($i, $r=null) {
         /**
@@ -447,13 +450,13 @@ class RiiakObject extends CComponent {
          */
         $vtag = $this->siblings[$i];
         $params = array('r' => $r, 'vtag' => $vtag);
-        $url = RiiakUtils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-        $response = RiiakUtils::httpRequest('GET', $url);
+        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $response = Utils::httpRequest('GET', $url);
 
         /**
          * Respond with a new object
          */
-        $obj = new RiiakObject($this->client, $this->bucket, $this->key);
+        $obj = new Object($this->client, $this->bucket, $this->key);
         $obj->jsonize = $this->jsonize;
         $obj->populate($response, array(200));
         return $obj;
@@ -463,7 +466,7 @@ class RiiakObject extends CComponent {
      * Retrieve an array of siblings
      *
      * @param int $r R-Value: X partitions must respond before returning
-     * @return array Array of RiiakObjects
+     * @return array Array of Objects
      */
     public function getSiblings($r=null) {
         $a = array();
@@ -474,10 +477,10 @@ class RiiakObject extends CComponent {
     }
 
     /**
-     * Returns a RiiakMapReduce instance
+     * Returns a MapReduce instance
      *
-     * @param bool $reset Whether to create a new RiiakMapReduce instance
-     * @return RiiakMapReduce
+     * @param bool $reset Whether to create a new MapReduce instance
+     * @return \riiak\MapReduce
      */
     public function getMapReduce($reset=false) {
         return $this->client->getMapReduce($reset);

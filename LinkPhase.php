@@ -1,18 +1,21 @@
 <?php
 
+namespace riiak;
+use \CComponent;
+
 /**
- * The RiiakLinkPhase object holds information about a Link phase in a
+ * The LinkPhase object holds information about a Link phase in a
  * map/reduce operation.
- * @package RiiakLinkPhase
+ * @package riiak
  */
-class RiiakLinkPhase extends CComponent {
+class LinkPhase extends CComponent {
     
     public $bucket;
     public $tag;
     public $keep;
 
     /**
-     * Construct a RiiakLinkPhase object
+     * Construct a LinkPhase object
      *
      * @param string $bucket The bucket name
      * @param string $tag The tag
@@ -25,7 +28,7 @@ class RiiakLinkPhase extends CComponent {
     }
 
     /**
-     * Convert the RiiakLinkPhase to an associative array. Used internally.
+     * Convert the LinkPhase to an associative array. Used internally.
      *
      * @return array
      */

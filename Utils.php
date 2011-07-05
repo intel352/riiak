@@ -1,15 +1,18 @@
 <?php
 
+namespace riiak;
+use \CComponent, \Exception;
+
 /**
  * Utility functions used by Riiak library.
- * @package RiiakUtils
+ * @package riiak
  */
-class RiiakUtils extends CComponent {
+class Utils extends CComponent {
     
     /**
      * Builds URL to connect to Riak server
      *
-     * @param Riiak $client
+     * @param \riiak\Riiak $client
      * @return string
      */
     public static function buildUrl(Riiak $client) {
@@ -19,14 +22,14 @@ class RiiakUtils extends CComponent {
     /**
      * Builds a REST URL to access Riak API
      *
-     * @param Riiak $client
-     * @param RiiakBucket $bucket
+     * @param \riiak\Riiak $client
+     * @param \riiak\Bucket $bucket
      * @param string $key
      * @param string $spec
      * @param array $params
      * @return string 
      */
-    public static function buildRestPath(Riiak $client,RiiakBucket $bucket=NULL, $key=NULL, $spec=NULL,array $params=NULL) {
+    public static function buildRestPath(Riiak $client,Bucket $bucket=NULL, $key=NULL, $spec=NULL,array $params=NULL) {
         /**
          * Build http[s]://hostname:port/prefix[/bucket]
          */
@@ -35,7 +38,7 @@ class RiiakUtils extends CComponent {
         /**
          * Add bucket
          */
-        if (!is_null($bucket) && $bucket instanceof RiiakBucket)
+        if (!is_null($bucket) && $bucket instanceof Bucket)
             $path .= '/' . urlencode($bucket->name);
 
         /**
@@ -125,7 +128,7 @@ class RiiakUtils extends CComponent {
             /**
              * Get headers
              */
-            $parsedHeaders = RiiakUtils::parseHttpHeaders($responseHeadersIO);
+            $parsedHeaders = Utils::parseHttpHeaders($responseHeadersIO);
             $responseHeaders = array_merge(array('http_code' => $httpCode),  array_change_key_case($parsedHeaders, CASE_LOWER));
 
             /**

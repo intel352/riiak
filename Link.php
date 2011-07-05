@@ -1,11 +1,14 @@
 <?php
 
+namespace riiak;
+use \CComponent;
+
 /**
- * The RiiakLink object represents a link from one Riak object to
+ * The Link object represents a link from one Riak object to
  * another.
- * @package RiiakLink
+ * @package riiak
  */
-class RiiakLink extends CComponent {
+class Link extends CComponent {
     
     /**
      * Bucket name
@@ -28,12 +31,12 @@ class RiiakLink extends CComponent {
     /**
      * Client instance
      *
-     * @var Riiak
+     * @var \riiak\Riiak
      */
     public $client;
 
     /**
-     * Construct a RiiakLink object
+     * Construct a Link object
      *
      * @param string $bucket The bucket name
      * @param string $key The key
@@ -46,20 +49,20 @@ class RiiakLink extends CComponent {
     }
 
     /**
-     * Retrieve the RiiakObject to which this link points
+     * Retrieve the Object to which this link points
      *
      * @param int $r The R-value to use
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     public function get($r=NULL) {
         return $this->client->bucket($this->bucket)->get($this->key, $r);
     }
 
     /**
-     * Retrieve the RiiakObject to which this link points, as a binary
+     * Retrieve the Object to which this link points, as a binary
      *
      * @param int $r The R-value to use
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     public function getBinary($r=NULL) {
         return $this->client->bucket($this->bucket)->getBinary($this->key, $r);
@@ -78,7 +81,7 @@ class RiiakLink extends CComponent {
      * Set the tag of this link
      *
      * @param string $tag The tag
-     * @return RiiakLink
+     * @return \riiak\Link
      */
     public function setTag($tag) {
         $this->_tag = $tag;
@@ -86,7 +89,7 @@ class RiiakLink extends CComponent {
     }
 
     /**
-     * Convert this RiiakLink object to a link header string. Used internally.
+     * Convert this Link object to a link header string. Used internally.
      *
      * @param string $client
      * @return string
@@ -103,10 +106,10 @@ class RiiakLink extends CComponent {
     /**
      * Return true if the links are equal
      *
-     * @param RiiakLink $link
+     * @param Link $link
      * @return bool
      */
-    public function isEqual(RiiakLink $link) {
+    public function isEqual(Link $link) {
         $is_equal =
             ($this->bucket == $link->bucket) &&
             ($this->key == $link->key) &&

@@ -1,11 +1,14 @@
 <?php
 
+namespace riiak;
+use \CComponent;
+
 /**
- * The RiiakMapReducePhase holds information about a Map or Reduce phase
- * in a RiiakMapReduce operation.
- * @package RiiakMapReducePhase
+ * The MapReducePhase holds information about a Map or Reduce phase
+ * in a MapReduce operation.
+ * @package riiak
  */
-class RiiakMapReducePhase extends CComponent {
+class MapReducePhase extends CComponent {
     
     /**
      * @var string map|reduce
@@ -29,7 +32,7 @@ class RiiakMapReducePhase extends CComponent {
     public $arg;
 
     /**
-     * Construct a RiiakMapReducePhase object.
+     * Construct a MapReducePhase object.
      *
      * @param string $type map|reduce
      * @param mixed $function String or array
@@ -46,7 +49,7 @@ class RiiakMapReducePhase extends CComponent {
     }
 
     /**
-     * Convert the RiiakMapReducePhase to an associative array. Used internally.
+     * Convert the MapReducePhase to an associative array. Used internally.
      *
      * @return array
      */

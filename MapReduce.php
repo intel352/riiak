@@ -1,14 +1,17 @@
 <?php
 
+namespace riiak;
+use \CComponent, \CJSON, \Exception;
+
 /**
- * The RiiakMapReduce object allows you to build up and run a
+ * The MapReduce object allows you to build up and run a
  * map/reduce operation on Riak.
- * @package RiiakMapReduce
+ * @package riiak
  */
-class RiiakMapReduce extends CComponent {
+class MapReduce extends CComponent {
 
     /**
-     * @var Riiak A Riak client object
+     * @var \riiak\Riiak A Riak client object
      */
     public $client;
     /**
@@ -36,10 +39,10 @@ class RiiakMapReduce extends CComponent {
     /**
      * Adds object's bucket name and key will be added to m/r inputs
      *
-     * @param RiiakObject $obj
-     * @return RiiakMapReduce
+     * @param \riiak\Object $obj
+     * @return \riiak\MapReduce
      */
-    public function addObject(RiiakObject $obj) {
+    public function addObject(Object $obj) {
         return $this->addBucketKeyData($obj->bucket->name, $obj->key, NULL);
     }
 
@@ -49,7 +52,7 @@ class RiiakMapReduce extends CComponent {
      * @param string $bucket Bucket name
      * @param string $key Key name
      * @param string $data
-     * @return RiiakMapReduce
+     * @return \riiak\MapReduce
      */
     public function addBucketKeyData($bucket, $key, $data=null) {
         if ($this->inputMode == 'bucket')
@@ -63,7 +66,7 @@ class RiiakMapReduce extends CComponent {
      * Means all of the bucket's keys will be used as inputs (expensive)
      *
      * @param string $bucket Bucket name
-     * @return RiiakMapReduce 
+     * @return \riiak\MapReduce 
      */
     public function addBucket($bucket) {
         $this->inputMode = 'bucket';
@@ -77,7 +80,7 @@ class RiiakMapReduce extends CComponent {
      *
      * @param string $bucket The Bucket to search
      * @param string $query The Query to execute. (Lucene syntax.)
-     * @return RiiakMapReduce
+     * @return \riiak\MapReduce
      */
     public function search($bucket, $query) {
         $this->inputs = array('module' => 'riak_search', 'function' => 'mapred_search', 'arg' => array($bucket, $query));
@@ -90,10 +93,10 @@ class RiiakMapReduce extends CComponent {
      * @param string $bucket Default: '_' - all buckets
      * @param string $tag Default: '_' - all buckets
      * @param bool $keep Whether to keep results from this stage in map/reduce
-     * @return RiiakMapReduce
+     * @return \riiak\MapReduce
      */
     public function link($bucket='_', $tag='_', $keep=FALSE) {
-        $this->phases[] = new RiiakLinkPhase($bucket, $tag, $keep);
+        $this->phases[] = new LinkPhase($bucket, $tag, $keep);
         return $this;
     }
 
@@ -102,7 +105,7 @@ class RiiakMapReduce extends CComponent {
      *
      * @param mixed $function Erlang (array) or Javascript function call (string)
      * @param array $options Optional assoc array containing language|keep|arg
-     * @return RiiakMapReduce
+     * @return \riiak\MapReduce
      */
     public function map($function, array $options=array()) {
         return $this->addPhase('map', $function, $options);
@@ -113,7 +116,7 @@ class RiiakMapReduce extends CComponent {
      *
      * @param mixed $function Erlang (array) or Javascript function call (string)
      * @param array $options Optional assoc array containing language|keep|arg
-     * @return RiiakMapReduce
+     * @return \riiak\MapReduce
      */
     public function reduce($function, $options=array()) {
         return $this->addPhase('reduce', $function, $options);
@@ -125,14 +128,14 @@ class RiiakMapReduce extends CComponent {
      * @param string $phase Name of phase-type to add (e.g.: map, reduce)
      * @param mixed $function Erlang (array) or Javascript function call (string)
      * @param array $options Optional assoc array containing language|keep|arg
-     * @return RiiakMapReduce
+     * @return \riiak\MapReduce
      */
     public function addPhase($phase, $function,array $options=array()) {
         $language = is_array($function) ? 'erlang' : 'javascript';
         $options=array_merge(
             array('language'=>$language,'keep'=>false,'arg'=>null),
             $options);
-        $this->phases[] = new RiiakMapReducePhase($phase,
+        $this->phases[] = new MapReducePhase($phase,
             $function,
             $options['language'],
             $options['keep'],
@@ -143,7 +146,7 @@ class RiiakMapReduce extends CComponent {
     
     /**
      * Run the map/reduce operation. Returns array of results
-     * or RiiakLink objects if last phase is link phase
+     * or Link objects if last phase is link phase
      *
      * @param integer $timeout Timeout in seconds. Default: null
      * @return array
@@ -189,13 +192,13 @@ class RiiakMapReduce extends CComponent {
          * Execute the request
          */
         $url = 'http://' . $this->client->host . ':' . $this->client->port . '/' . $this->client->mapred_prefix;
-        $response = RiiakUtils::httpRequest('POST', $url, array(), $content);
+        $response = Utils::httpRequest('POST', $url, array(), $content);
         $result = CJSON::decode($response[1]);
 
         /**
          * If the last phase is NOT a link phase, then return the result.
          */
-        $linkResultsFlag |= ( end($this->phases) instanceof RiiakLinkPhase);
+        $linkResultsFlag |= ( end($this->phases) instanceof LinkPhase);
 
         /**
          * If we don't need to link results, then just return.
@@ -205,12 +208,12 @@ class RiiakMapReduce extends CComponent {
 
         /**
          * Otherwise, if the last phase IS a link phase, then convert the
-         * results to RiiakLink objects.
+         * results to Link objects.
          */
         $a = array();
         foreach ($result as $r) {
             $tag = isset($r[2]) ? $r[2] : null;
-            $link = new RiiakLink($r[0], $r[1], $tag);
+            $link = new Link($r[0], $r[1], $tag);
             $link->client = $this->client;
             $a[] = $link;
         }

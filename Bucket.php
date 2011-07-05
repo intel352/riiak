@@ -1,17 +1,20 @@
 <?php
 
+namespace riiak;
+use \CComponent, \CJSON, \Exception;
+
 /**
- * The RiiakBucket object allows you to access and change information
+ * The Bucket object allows you to access and change information
  * about a Riak bucket, and provides methods to create or retrieve
  * objects within the bucket.
- * @package RiiakBucket
+ * @package riiak
  */
-class RiiakBucket extends CComponent {
+class Bucket extends CComponent {
     
     /**
      * Client instance
      *
-     * @var Riiak
+     * @var \riiak\Riiak
      */
     public $client;
     /**
@@ -63,7 +66,7 @@ class RiiakBucket extends CComponent {
      * get/getBinary operations may use this value
      *
      * @param int $r The new R-Value
-     * @return RiiakBucket
+     * @return \riiak\Bucket
      */
     public function setR($r) {
         $this->_r = $r;
@@ -89,7 +92,7 @@ class RiiakBucket extends CComponent {
      * get/getBinary operations may use this value
      *
      * @param int $w The new W-Value
-     * @return RiiakBucket 
+     * @return \riiak\Bucket 
      */
     public function setW($w) {
         $this->_w = $w;
@@ -115,7 +118,7 @@ class RiiakBucket extends CComponent {
      * get/getBinary operations may use this value
      *
      * @param int $dw The new DW-Value
-     * @return RiiakBucket
+     * @return \riiak\Bucket
      */
     public function setDW($dw) {
         $this->_dw = $dw;
@@ -127,7 +130,7 @@ class RiiakBucket extends CComponent {
      *
      * @param string $key Name of the key
      * @param object $data Data to store (Default: null)
-     * @return RiiakObject 
+     * @return \riiak\Object 
      */
     public function newObject($key, $data=null) {
         return $this->newBinary($key, $data, 'text/json', true);
@@ -140,10 +143,10 @@ class RiiakBucket extends CComponent {
      * @param object $data Data to store
      * @param string $contentType Content type of the object (Default: text/json)
      * @param bool $jsonize Whether to treat the object as JSON (Default: false)
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     public function newBinary($key, $data, $contentType='text/json', $jsonize=false) {
-        $obj = new RiiakObject($this->client, $this, $key);
+        $obj = new Object($this->client, $this, $key);
         $obj->data = $data;
         $obj->contentType = $contentType;
         $obj->jsonize = $jsonize;
@@ -155,7 +158,7 @@ class RiiakBucket extends CComponent {
      *
      * @param string $key Name of the key
      * @param int $r R-Value of the request (Default: bucket's R)
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     public function get($key, $r=null) {
         return $this->getBinary($key, $r, true);
@@ -167,10 +170,10 @@ class RiiakBucket extends CComponent {
      * @param string $key Name of the key
      * @param int $r R-Value of the request (Default: bucket's R)
      * @param bool $jsonize Whether to treat the object as JSON (Default: false)
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     public function getBinary($key, $r=null, $jsonize=false) {
-        $obj = new RiiakObject($this->client, $this, $key);
+        $obj = new Object($this->client, $this, $key);
         $obj->jsonize = $jsonize;
         $r = $this->getR($r);
         return $obj->reload($r);
@@ -250,14 +253,14 @@ class RiiakBucket extends CComponent {
         /**
          * Construct the URL, Headers, and Content
          */
-        $url = RiiakUtils::buildRestPath($this->client, $this);
+        $url = Utils::buildRestPath($this->client, $this);
         $headers = array('Content-Type: application/json');
         $content = CJSON::encode(array('props' => $props));
 
         /**
          * Run the request
          */
-        $response = RiiakUtils::httpRequest('PUT', $url, $headers, $content);
+        $response = Utils::httpRequest('PUT', $url, $headers, $content);
 
         /**
          * Handle the response
@@ -300,20 +303,20 @@ class RiiakBucket extends CComponent {
      * @param array $params
      * @param string $key
      * @param string $spec
-     * @return RiiakObject
+     * @return \riiak\Object
      */
     protected function fetchBucketProperties(array $params=array(), $key=null, $spec=null) {
         /**
          * Run the request
          */
-        $response = RiiakUtils::httpRequest('GET',
-            RiiakUtils::buildRestPath($this->client, $this, $key, $spec, $params)
+        $response = Utils::httpRequest('GET',
+            Utils::buildRestPath($this->client, $this, $key, $spec, $params)
         );
 
         /**
-         * Use a RiiakObject to interpret the response, we are just interested in the value
+         * Use a Object to interpret the response, we are just interested in the value
          */
-        $obj = new RiiakObject($this->client, $this);
+        $obj = new Object($this->client, $this);
         $obj->populate($response, array(200));
         if (!$obj->exists)
             throw Exception('Error getting bucket properties.');
