@@ -110,11 +110,11 @@ class Link extends CComponent {
      * @return bool
      */
     public function isEqual(Link $link) {
-        $is_equal =
+        $isEqual =
             ($this->bucket == $link->bucket) &&
             ($this->key == $link->key) &&
             ($this->getTag() == $link->getTag());
-        return $is_equal;
+        return $isEqual;
     }
 
 }

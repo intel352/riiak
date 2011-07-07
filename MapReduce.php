@@ -191,7 +191,7 @@ class MapReduce extends CComponent {
         /**
          * Execute the request
          */
-        $url = 'http://' . $this->client->host . ':' . $this->client->port . '/' . $this->client->mapred_prefix;
+        $url = 'http://' . $this->client->host . ':' . $this->client->port . '/' . $this->client->mapredPrefix;
         $response = Utils::httpRequest('POST', $url, array(), $content);
         $result = CJSON::decode($response[1]);
 

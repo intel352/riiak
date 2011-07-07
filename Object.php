@@ -387,8 +387,8 @@ class Object extends CComponent {
         }
 
         if ($this->status == 201) {
-            $path_parts = explode('/', $this->headers['location']);
-            $this->key = array_pop($path_parts);
+            $pathParts = explode('/', $this->headers['location']);
+            $this->key = array_pop($pathParts);
         }
 
         /**
