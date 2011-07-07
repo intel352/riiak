@@ -133,7 +133,7 @@ class Bucket extends CComponent {
      * @return \riiak\Object 
      */
     public function newObject($key, $data=null) {
-        return $this->newBinary($key, $data, 'text/json', true);
+        return $this->newBinary($key, $data, 'application/json', true);
     }
 
     /**
@@ -141,11 +141,11 @@ class Bucket extends CComponent {
      *
      * @param string $key Name of the key
      * @param object $data Data to store
-     * @param string $contentType Content type of the object (Default: text/json)
+     * @param string $contentType Content type of the object (Default: application/json)
      * @param bool $jsonize Whether to treat the object as JSON (Default: false)
      * @return \riiak\Object
      */
-    public function newBinary($key, $data, $contentType='text/json', $jsonize=false) {
+    public function newBinary($key, $data, $contentType='application/json', $jsonize=false) {
         $obj = new Object($this->client, $this, $key);
         $obj->data = $data;
         $obj->contentType = $contentType;
@@ -266,14 +266,14 @@ class Bucket extends CComponent {
          * Handle the response
          */
         if ($response == null)
-            throw Exception('Error setting bucket properties.');
+            throw new Exception('Error setting bucket properties.');
 
         /**
          * Check the response value
          */
         $status = $response['headers']['http_code'];
         if ($status != 204)
-            throw Exception('Error setting bucket properties.');
+            throw new Exception('Error setting bucket properties.');
     }
 
     /**
@@ -319,7 +319,7 @@ class Bucket extends CComponent {
         $obj = new Object($this->client, $this);
         $obj->populate($response, array(200));
         if (!$obj->exists)
-            throw Exception('Error getting bucket properties.');
+            throw new Exception('Error getting bucket properties.');
         
         return $obj;
     }
