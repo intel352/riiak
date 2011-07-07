@@ -53,7 +53,7 @@ class MapReducePhase extends CComponent {
      *
      * @return array
      */
-    function toArray() {
+    public function toArray() {
         $stepdef = array('keep' => $this->keep,
             'language' => $this->language,
             'arg' => $this->arg);
