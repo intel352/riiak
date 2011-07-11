@@ -167,7 +167,7 @@ class MapReduce extends CComponent {
      * @param array $filter
      * @return \riiak\MapReduce
      */
-    function keyFilterAnd(array $filter) {
+    public function keyFilterAnd(array $filter) {
         $args = func_get_args();
         array_unshift($args, 'and');
         return call_user_func_array(array($this, 'keyFilterOperator'), $args);
@@ -181,20 +181,11 @@ class MapReduce extends CComponent {
      * @param array $filter
      * @return \riiak\MapReduce
      */
-    function keyFilterOr(array $filter) {
+    public function keyFilterOr(array $filter) {
         $args = func_get_args();
         array_unshift($args, 'or');
         return call_user_func_array(array($this, 'keyFilterOperator'), $args);
     }
-
-    /**
-     * Adds a key filter to the map/reduce operation.  If there are already
-     * existing filters, the provided conditional operator will be used
-     * to combine with the existing filters.
-     * @param string $operator - Operator (usually "and" or "or")
-     * @param array $filter
-     * @return $this
-     */
 
     /**
      * Add a key filter to the map/reduce operation.
@@ -205,7 +196,7 @@ class MapReduce extends CComponent {
      * @param array $filter
      * @return \riiak\MapReduce
      */
-    function keyFilterOperator($operator, $filter) {
+    public function keyFilterOperator($operator, $filter) {
         $filters = func_get_args();
         array_shift($filters);
         if ($this->input_mode != 'bucket')
