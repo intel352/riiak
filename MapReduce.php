@@ -1,7 +1,10 @@
 <?php
 
 namespace riiak;
-use \CComponent, \CJSON, \Exception;
+
+use \CComponent,
+    \CJSON,
+    \Exception;
 
 /**
  * The MapReduce object allows you to build up and run a
@@ -15,7 +18,6 @@ class MapReduce extends CComponent {
      */
     public $client;
     /**
-     *
      * @var array
      */
     public $phases = array();
@@ -27,10 +29,13 @@ class MapReduce extends CComponent {
      */
     public $inputs = array();
     /**
-     *
-     * @var type 
+     * @var string 
      */
     public $inputMode;
+    /**
+     * @var array
+     */
+    public $keyFilters = array();
 
     public function __construct(Riiak $client) {
         $this->client = $client;
@@ -43,7 +48,7 @@ class MapReduce extends CComponent {
      * @return \riiak\MapReduce
      */
     public function addObject(Object $obj) {
-        return $this->addBucketKeyData($obj->bucket->name, $obj->key, NULL);
+        return $this->addBucketKeyData($obj->bucket->name, $obj->key, null);
     }
 
     /**
@@ -57,7 +62,7 @@ class MapReduce extends CComponent {
     public function addBucketKeyData($bucket, $key, $data=null) {
         if ($this->inputMode == 'bucket')
             throw new Exception('Already added a bucket, can\'t add an object.');
-        $this->inputs[] = array($bucket, $key, $data);
+        $this->inputs[] = array((string) $bucket, (string) $key, (string) $data);
         return $this;
     }
 
@@ -70,7 +75,7 @@ class MapReduce extends CComponent {
      */
     public function addBucket($bucket) {
         $this->inputMode = 'bucket';
-        $this->inputs = $bucket;
+        $this->inputs = (string) $bucket;
         return $this;
     }
 
@@ -83,7 +88,7 @@ class MapReduce extends CComponent {
      * @return \riiak\MapReduce
      */
     public function search($bucket, $query) {
-        $this->inputs = array('module' => 'riak_search', 'function' => 'mapred_search', 'arg' => array($bucket, $query));
+        $this->inputs = array('module' => 'riak_search', 'function' => 'mapred_search', 'arg' => array((string) $bucket, (string) $query));
         return $this;
     }
 
@@ -95,8 +100,8 @@ class MapReduce extends CComponent {
      * @param bool $keep Whether to keep results from this stage in map/reduce
      * @return \riiak\MapReduce
      */
-    public function link($bucket='_', $tag='_', $keep=FALSE) {
-        $this->phases[] = new LinkPhase($bucket, $tag, $keep);
+    public function link($bucket='_', $tag='_', $keep=false) {
+        $this->phases[] = new LinkPhase((string) $bucket, (string) $tag, $keep);
         return $this;
     }
 
@@ -121,7 +126,7 @@ class MapReduce extends CComponent {
     public function reduce($function, $options=array()) {
         return $this->addPhase('reduce', $function, $options);
     }
-    
+
     /**
      * Add a map/reduce phase
      *
@@ -130,20 +135,85 @@ class MapReduce extends CComponent {
      * @param array $options Optional assoc array containing language|keep|arg
      * @return \riiak\MapReduce
      */
-    public function addPhase($phase, $function,array $options=array()) {
+    public function addPhase($phase, $function, array $options=array()) {
         $language = is_array($function) ? 'erlang' : 'javascript';
-        $options=array_merge(
-            array('language'=>$language,'keep'=>false,'arg'=>null),
-            $options);
-        $this->phases[] = new MapReducePhase($phase,
-            $function,
-            $options['language'],
-            $options['keep'],
-            $options['arg']
+        $options = array_merge(
+            array('language' => $language, 'keep' => false, 'arg' => null), $options);
+        $this->phases[] = new MapReducePhase((string) $phase,
+                $function,
+                $options['language'],
+                $options['keep'],
+                $options['arg']
         );
         return $this;
     }
-    
+
+    /**
+     * Add a key filter to the map/reduce operation.
+     * @see function keyFilterAnd
+     *
+     * @param array $filter
+     * @return \riiak\MapReduce
+     */
+    public function keyFilter(array $filter) {
+        return call_user_func_array(array($this, 'keyFilterAnd'), func_get_args());
+    }
+
+    /**
+     * Add a key filter to the map/reduce operation.
+     * If there are already existing filters, an "and" condition will be used
+     * to combine them.
+     *
+     * @param array $filter
+     * @return \riiak\MapReduce
+     */
+    public function keyFilterAnd(array $filter) {
+        $args = func_get_args();
+        array_unshift($args, 'and');
+        return call_user_func_array(array($this, 'keyFilterOperator'), $args);
+    }
+
+    /**
+     * Add a key filter to the map/reduce operation.
+     * If there are already existing filters, an "or" condition will be used
+     * to combine them.
+     *
+     * @param array $filter
+     * @return \riiak\MapReduce
+     */
+    public function keyFilterOr(array $filter) {
+        $args = func_get_args();
+        array_unshift($args, 'or');
+        return call_user_func_array(array($this, 'keyFilterOperator'), $args);
+    }
+
+    /**
+     * Add a key filter to the map/reduce operation.
+     * If there are already existing filters, the conditional operator will be
+     * used to combine them.
+     *
+     * @param string $operator Typically "and" or "or"
+     * @param array $filter
+     * @return \riiak\MapReduce
+     */
+    public function keyFilterOperator($operator, $filter) {
+        $filters = func_get_args();
+        array_shift($filters);
+        if ($this->input_mode != 'bucket')
+            throw new Exception('Key filters can only be used in bucket mode');
+
+        if (count($this->keyFilters) > 0) {
+            $this->keyFilters = array(array(
+                    $operator,
+                    $this->keyFilters,
+                    $filters
+                ));
+        } else {
+            $this->keyFilters = $filters;
+        }
+        return $this;
+    }
+
     /**
      * Run the map/reduce operation. Returns array of results
      * or Link objects if last phase is link phase
@@ -178,6 +248,16 @@ class MapReduce extends CComponent {
             if ($phase->keep)
                 $keepFlag = true;
             $query[] = $phase->toArray();
+        }
+
+        /**
+         * Add key filters if applicable
+         */
+        if ($this->inputMode == 'bucket' && count($this->keyFilters) > 0) {
+            $this->inputs = array(
+                'bucket' => $this->inputs,
+                'key_filters' => $this->keyFilters
+            );
         }
 
         /**
