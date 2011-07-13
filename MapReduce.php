@@ -193,7 +193,7 @@ class MapReduce extends CComponent {
          */
         $url = 'http://' . $this->client->host . ':' . $this->client->port . '/' . $this->client->mapredPrefix;
         $response = Utils::httpRequest('POST', $url, array(), $content);
-        $result = CJSON::decode($response[1]);
+        $result = CJSON::decode($response['body']);
 
         /**
          * If the last phase is NOT a link phase, then return the result.
