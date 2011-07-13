@@ -123,7 +123,7 @@ class MapReduce extends CComponent {
      * @param array $options Optional assoc array containing language|keep|arg
      * @return \riiak\MapReduce
      */
-    public function reduce($function, $options=array()) {
+    public function reduce($function, array $options=array()) {
         return $this->addPhase('reduce', $function, $options);
     }
 

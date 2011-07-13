@@ -42,8 +42,8 @@ class MapReducePhase extends CComponent {
      */
     public function __construct($type, $function, $language, $keep, $arg) {
         $this->type = $type;
-        $this->language = $language;
         $this->function = $function;
+        $this->language = $language;
         $this->keep = $keep;
         $this->arg = $arg;
     }
