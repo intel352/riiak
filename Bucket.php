@@ -294,6 +294,8 @@ class Bucket extends CComponent {
      */
     public function getKeys() {
         $obj=$this->fetchBucketProperties(array('props' => 'false', 'keys' => 'true'));
+        if(empty($obj->data['keys']))
+            return array();
         return array_map('urldecode', $obj->data['keys']);
     }
 
