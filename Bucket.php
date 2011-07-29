@@ -289,6 +289,8 @@ class Bucket extends CComponent {
     /**
      * Retrieve an array of all keys in this bucket
      * Note: this operation is pretty slow
+     * 
+     * @todo Add support for streamed keys, so that keys can be chunked in large buckets
      *
      * @return array
      */
