@@ -17,10 +17,12 @@ class MapReduce extends CComponent {
      * @var \riiak\Riiak A Riak client object
      */
     public $client;
+
     /**
      * @var array
      */
     public $phases = array();
+
     /**
      * Bucket name (string) or array of inputs
      * If bucket name, then all keys of bucket will be used as inputs (expensive)
@@ -28,10 +30,12 @@ class MapReduce extends CComponent {
      * @var string|array
      */
     public $inputs = array();
+
     /**
      * @var string 
      */
     public $inputMode;
+
     /**
      * @var array
      */
@@ -138,12 +142,12 @@ class MapReduce extends CComponent {
     public function addPhase($phase, $function, array $options=array()) {
         $language = is_array($function) ? 'erlang' : 'javascript';
         $options = array_merge(
-            array('language' => $language, 'keep' => false, 'arg' => null), $options);
+                array('language' => $language, 'keep' => false, 'arg' => null), $options);
         $this->phases[] = new MapReducePhase((string) $phase,
-                $function,
-                $options['language'],
-                $options['keep'],
-                $options['arg']
+                        $function,
+                        $options['language'],
+                        $options['keep'],
+                        $options['arg']
         );
         return $this;
     }
@@ -202,15 +206,15 @@ class MapReduce extends CComponent {
         if ($this->input_mode != 'bucket')
             throw new Exception('Key filters can only be used in bucket mode');
 
-        if (count($this->keyFilters) > 0) {
+        if (count($this->keyFilters) > 0)
             $this->keyFilters = array(array(
                     $operator,
                     $this->keyFilters,
                     $filters
-                ));
-        } else {
+                    ));
+        else
             $this->keyFilters = $filters;
-        }
+        
         return $this;
     }
 
@@ -259,11 +263,19 @@ class MapReduce extends CComponent {
                 'key_filters' => $this->keyFilters
             );
         }
+        
+        $urlEncode = function($input)use(&$urlEncode){
+            if(is_string($input))
+                return urlencode($input);
+            elseif(is_int($input))
+                return $input;
+            return array_map($urlEncode, $input);
+        };
 
         /**
          * Construct the job, optionally set the timeout
          */
-        $job = array('inputs' => $this->inputs, 'query' => $query);
+        $job = array('inputs' => $urlEncode($this->inputs), 'query' => $query);
         if ($timeout != null)
             $job['timeout'] = $timeout;
         $content = CJSON::encode($job);
@@ -271,7 +283,7 @@ class MapReduce extends CComponent {
         /**
          * Execute the request
          */
-        $url = 'http://' . $this->client->host . ':' . $this->client->port . '/' . $this->client->mapredPrefix;
+        $url = Utils::buildUrl($this->client) . '/' . $this->client->mapredPrefix;
         $response = Utils::httpRequest('POST', $url, array(), $content);
         $result = CJSON::decode($response['body']);
 
