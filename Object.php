@@ -253,20 +253,36 @@ class Object extends CComponent {
         /**
          * Do the request
          */
-        $params = array('r' => $this->bucket->getR($r));
-        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $url = self::buildReloadUrl($this, $r);
         $response = Utils::httpRequest('GET', $url);
-        $this->populate($response, array(200, 300, 404));
+        return self::populateResponse($this, $response);
+    }
+    
+    public static function reloadMulti(array $objects, $r=null) {
+        $objects = array_combine(array_map(array(self,'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
+        $responses = Utils::httpMultiRequest('GET', $urls);
+        return array_walk($objects, function($object, $url)use(&$responses){
+            self::populateResponse($object, $responses[$url]);
+        });
+    }
+    
+    protected static function buildReloadUrl(Object $object, $r=null) {
+        $params = array('r' => $object->bucket->getR($r));
+        return Utils::buildRestPath($object->client, $object->bucket, $object->key, null, $params);
+    }
+    
+    protected static function populateResponse(Object $object, $response) {
+        $object->populate($response, array(200, 300, 404));
 
         /**
          * If there are siblings, load the data for the first one by default
          */
-        if ($this->getHasSiblings()) {
+        if ($object->getHasSiblings()) {
             $obj = $this->getSibling(0);
-            $this->_data=$obj->data;
+            $object->_data=$obj->data;
         }
-
-        return $this;
+        
+        return $object;
     }
 
     /**

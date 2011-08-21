@@ -178,6 +178,22 @@ class Bucket extends CComponent {
         $r = $this->getR($r);
         return $obj->reload($r);
     }
+    
+    public function getMulti(array $keys, $r=null) {
+        return $this->getBinary($keys, $r, true);
+    }
+    
+    public function getMultiBinary(array $keys, $r=null, $jsonize=false) {
+        $bucket = $this;
+        $client = $this->client;
+        $objects = array_map(function($key)use($jsonize,$client,$bucket){
+            $obj = new Object($client, $bucket, $key);
+            $obj->jsonize = $jsonize;
+            return $obj;
+        }, $keys);
+        $r = $this->getR($r);
+        return $obj->reloadMulti($objects, $r);
+    }
 
     /**
      * Set N-value for this bucket. Controls number replicas of each object
