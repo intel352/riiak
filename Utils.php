@@ -107,11 +107,12 @@ class Utils extends CComponent {
          * Init curl
          */
         $ch = curl_init();
+        $curlOpts = self::buildCurlOpts($method, $url, $requestHeaders, $obj);
 
         /**
          * Capture response headers
          */
-        $curlOptions[CURLOPT_HEADERFUNCTION] =
+        $curlOpts[CURLOPT_HEADERFUNCTION] =
             function($ch, $data) use(&$responseHeadersIO) {
                 $responseHeadersIO.=$data;
                 return strlen($data);
@@ -120,13 +121,13 @@ class Utils extends CComponent {
         /**
          * Capture response body
          */
-        $curlOptions[CURLOPT_WRITEFUNCTION] =
+        $curlOpts[CURLOPT_WRITEFUNCTION] =
             function($ch, $data) use(&$responseBodyIO) {
                 $responseBodyIO.=$data;
                 return strlen($data);
             };
 
-        curl_setopt_array($ch, self::buildCurlOpts($method, $url, $requestHeaders, $obj));
+        curl_setopt_array($ch, $curlOpts);
 
         try {
             /**
@@ -183,7 +184,7 @@ class Utils extends CComponent {
                 /**
                  * Capture response headers
                  */
-                $curlOptions[CURLOPT_HEADERFUNCTION] =
+                $curlOpts[CURLOPT_HEADERFUNCTION] =
                     function($ch, $data) use(&$responseHeadersIO) {
                         $responseHeadersIO.=$data;
                         return strlen($data);
@@ -192,7 +193,7 @@ class Utils extends CComponent {
                 /**
                  * Capture response body
                  */
-                $curlOptions[CURLOPT_WRITEFUNCTION] =
+                $curlOpts[CURLOPT_WRITEFUNCTION] =
                     function($ch, $data) use(&$responseBodyIO) {
                         $responseBodyIO.=$data;
                         return strlen($data);
