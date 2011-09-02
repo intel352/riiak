@@ -1,7 +1,10 @@
 <?php
 
 namespace riiak;
-use \CComponent, \CJSON, \Exception;
+
+use \CComponent,
+    \CJSON,
+    \Exception;
 
 /**
  * The Object holds meta information about a Riak object, plus the
@@ -14,45 +17,51 @@ use \CComponent, \CJSON, \Exception;
  * @property string vclock
  */
 class Object extends CComponent {
-    
+
     /**
      * Client instance
      *
      * @var \riiak\Riiak
      */
     public $client;
+
     /**
      * Bucket
      *
      * @var \riiak\Bucket
      */
     public $bucket;
+
     /**
      * Key
      *
      * @var string
      */
     public $key;
+
     /**
      * Whether or not to treat object as json
      *
      * @var bool
      */
-    public $jsonize=true;
-    public $headers=array();
+    public $jsonize = true;
+    public $headers = array();
+
     /**
      * Array of Links
      *
      * @var array
      */
-    protected $_links=array();
-    public $siblings=null;
+    protected $_links = array();
+    public $siblings = null;
+
     /**
      * Whether the object exists
      *
      * @var bool
      */
-    protected $_exists=false;
+    protected $_exists = false;
+
     /**
      * If constructed by newBinary|getBinary, returns string.
      * If not a string, will be JSON encoded when stored
@@ -68,7 +77,7 @@ class Object extends CComponent {
      * @param \riiak\Bucket $bucket A Bucket object
      * @param string $key Optional - If empty, generated upon store()
      */
-    public function __construct(Riiak $client,Bucket $bucket, $key=null) {
+    public function __construct(Riiak $client, Bucket $bucket, $key=null) {
         $this->client = $client;
         $this->bucket = $bucket;
         $this->key = $key;
@@ -122,7 +131,7 @@ class Object extends CComponent {
         $this->_data = $data;
         return $this;
     }
-    
+
     /**
      * Whether the object exists
      *
@@ -164,7 +173,7 @@ class Object extends CComponent {
         else
             $oldlink = new Link($obj->bucket->name, $obj->key, $tag);
 
-        foreach ($this->_links as $k=>$link)
+        foreach ($this->_links as $k => $link)
             if (!$link->isEqual($oldlink))
                 unset($this->_links[$k]);
 
@@ -257,21 +266,22 @@ class Object extends CComponent {
         $response = Utils::httpRequest('GET', $url);
         return self::populateResponse($this, $response);
     }
-    
+
     public static function reloadMulti(array $objects, $r=null) {
-        $objects = array_combine(array_map(array(self,'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
-        $responses = Utils::httpMultiRequest('GET', $urls);
-        return array_walk($objects, function($object, $url)use(&$responses){
-            self::populateResponse($object, $responses[$url]);
+        $objects = array_combine(array_map(array('self', 'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
+        $responses = Utils::httpMultiRequest('GET', array_keys($objects));
+        array_walk($objects, function(&$object, $url)use(&$responses) {
+            Object::populateResponse($object, $responses[$url]);
         });
+        return $objects;
     }
-    
+
     protected static function buildReloadUrl(Object $object, $r=null) {
         $params = array('r' => $object->bucket->getR($r));
         return Utils::buildRestPath($object->client, $object->bucket, $object->key, null, $params);
     }
-    
-    protected static function populateResponse(Object $object, $response) {
+
+    public static function populateResponse(Object &$object, $response) {
         $object->populate($response, array(200, 300, 404));
 
         /**
@@ -279,9 +289,9 @@ class Object extends CComponent {
          */
         if ($object->getHasSiblings()) {
             $obj = $this->getSibling(0);
-            $object->_data=$obj->data;
+            $object->_data = $obj->data;
         }
-        
+
         return $object;
     }
 

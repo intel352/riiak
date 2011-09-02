@@ -1,7 +1,10 @@
 <?php
 
 namespace riiak;
-use \CComponent, \CJSON, \Exception;
+
+use \CComponent,
+    \CJSON,
+    \Exception;
 
 /**
  * The Bucket object allows you to access and change information
@@ -10,31 +13,35 @@ use \CComponent, \CJSON, \Exception;
  * @package riiak
  */
 class Bucket extends CComponent {
-    
+
     /**
      * Client instance
      *
      * @var \riiak\Riiak
      */
     public $client;
+
     /**
      * Bucket name
      *
      * @var string
      */
     public $name;
+
     /**
      * R-Value
      *
      * @var int
      */
     protected $_r;
+
     /**
      * W-Value
      *
      * @var int
      */
     protected $_w;
+
     /**
      * DW-Value
      *
@@ -178,19 +185,19 @@ class Bucket extends CComponent {
         $r = $this->getR($r);
         return $obj->reload($r);
     }
-    
+
     public function getMulti(array $keys, $r=null) {
         return $this->getBinary($keys, $r, true);
     }
-    
+
     public function getMultiBinary(array $keys, $r=null, $jsonize=false) {
         $bucket = $this;
         $client = $this->client;
-        $objects = array_map(function($key)use($jsonize,$client,$bucket){
-            $obj = new Object($client, $bucket, $key);
-            $obj->jsonize = $jsonize;
-            return $obj;
-        }, $keys);
+        $objects = array_map(function($key)use($jsonize, $client, $bucket) {
+                    $obj = new Object($client, $bucket, $key);
+                    $obj->jsonize = $jsonize;
+                    return $obj;
+                }, $keys);
         $r = $this->getR($r);
         return $obj->reloadMulti($objects, $r);
     }
@@ -298,7 +305,7 @@ class Bucket extends CComponent {
      * @return array
      */
     public function getProperties() {
-        $obj=$this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'));
+        $obj = $this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'));
         return $obj->data['props'];
     }
 
@@ -311,8 +318,8 @@ class Bucket extends CComponent {
      * @return array
      */
     public function getKeys() {
-        $obj=$this->fetchBucketProperties(array('props' => 'false', 'keys' => 'true'));
-        if(empty($obj->data['keys']))
+        $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'true'));
+        if (empty($obj->data['keys']))
             return array();
         return array_map('urldecode', $obj->data['keys']);
     }
@@ -329,8 +336,7 @@ class Bucket extends CComponent {
         /**
          * Run the request
          */
-        $response = Utils::httpRequest('GET',
-            Utils::buildRestPath($this->client, $this, $key, $spec, $params)
+        $response = Utils::httpRequest('GET', Utils::buildRestPath($this->client, $this, $key, $spec, $params)
         );
 
         /**
@@ -340,7 +346,7 @@ class Bucket extends CComponent {
         $obj->populate($response, array(200));
         if (!$obj->exists)
             throw new Exception('Error getting bucket properties.');
-        
+
         return $obj;
     }
 

@@ -113,19 +113,19 @@ class Utils extends CComponent {
          * Capture response headers
          */
         $curlOpts[CURLOPT_HEADERFUNCTION] =
-            function($ch, $data) use(&$responseHeadersIO) {
-                $responseHeadersIO.=$data;
-                return strlen($data);
-            };
+                function($ch, $data) use(&$responseHeadersIO) {
+                    $responseHeadersIO.=$data;
+                    return strlen($data);
+                };
 
         /**
          * Capture response body
          */
         $curlOpts[CURLOPT_WRITEFUNCTION] =
-            function($ch, $data) use(&$responseBodyIO) {
-                $responseBodyIO.=$data;
-                return strlen($data);
-            };
+                function($ch, $data) use(&$responseBodyIO) {
+                    $responseBodyIO.=$data;
+                    return strlen($data);
+                };
 
         curl_setopt_array($ch, $curlOpts);
 
@@ -170,51 +170,49 @@ class Utils extends CComponent {
         $mh = curl_multi_init();
         $curlOpts = self::buildCurlOpts($method, '', $requestHeaders, $obj);
 
-        $responses = array();
-        $curlHandles = array_map(function($url)use($mh, $curlOpts, &$responses) {
-                $ch = curl_init($url);
-                /**
-                 * Override the URL specified in the options array
-                 */
-                $curlOpts[CURLOPT_URL] = $url;
-                $responses[$url] = array('responseHeadersIO' => null, 'responseBodyIO' => null);
-                $responseHeadersIO = &$responses[$url]['responseHeadersIO'];
-                $responseBodyIO = &$responses[$url]['responseBodyIO'];
+        $instanceMap = array();
+        $responses = array_map(function($url)use(&$mh, $curlOpts, &$instanceMap) {
+            $instanceMap[$url] = (int) $ch = curl_init();
 
-                /**
-                 * Capture response headers
-                 */
-                $curlOpts[CURLOPT_HEADERFUNCTION] =
+            /**
+             * Override the URL specified in the options array
+             */
+            $curlOpts[CURLOPT_URL] = $url;
+
+            /**
+             * Capture response headers
+             */
+            $curlOpts[CURLOPT_HEADERFUNCTION] =
                     function($ch, $data) use(&$responseHeadersIO) {
                         $responseHeadersIO.=$data;
                         return strlen($data);
                     };
 
-                /**
-                 * Capture response body
-                 */
-                $curlOpts[CURLOPT_WRITEFUNCTION] =
+            /**
+             * Capture response body
+             */
+            $curlOpts[CURLOPT_WRITEFUNCTION] =
                     function($ch, $data) use(&$responseBodyIO) {
                         $responseBodyIO.=$data;
                         return strlen($data);
                     };
 
-                curl_setopt_array($ch, $curlOpts);
-                curl_multi_add_handle($mh, $ch);
+            curl_setopt_array($ch, $curlOpts);
+            curl_multi_add_handle($mh, $ch);
 
-                return $ch;
-            }, array_combine($urls, $urls));
+            return array('instanceId' => (int) $ch, 'responseHeadersIO' => &$responseHeadersIO, 'responseBodyIO' => &$responseBodyIO);
+        }, array_combine($urls, $urls));
 
         do {
             $status = curl_multi_exec($mh, $active);
-        } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
+        } while ($status === CURLM_CALL_MULTI_PERFORM);
 
         $results = array();
-        while ($active && $status == CURLM_OK) {
+        while ($active && $status === CURLM_OK) {
             if (curl_multi_select($mh) != -1) {
                 do {
                     $status = curl_multi_exec($mh, $active);
-                } while ($status == CURLM_CALL_MULTI_PERFORM);
+                } while ($status === CURLM_CALL_MULTI_PERFORM);
 
                 /**
                  * If a request finished
@@ -224,7 +222,7 @@ class Utils extends CComponent {
                     /**
                      * Find which URL this response belongs to
                      */
-                    $url = array_search($ch, $curlHandles);
+                    $url = array_search((int) $ch, $instanceMap);
 
                     try {
                         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
