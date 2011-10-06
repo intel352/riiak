@@ -264,18 +264,10 @@ class MapReduce extends CComponent {
             );
         }
         
-        $urlEncode = function($input)use(&$urlEncode){
-            if(is_string($input))
-                return urlencode($input);
-            elseif(is_int($input))
-                return $input;
-            return array_map($urlEncode, $input);
-        };
-
         /**
          * Construct the job, optionally set the timeout
          */
-        $job = array('inputs' => $urlEncode($this->inputs), 'query' => $query);
+        $job = array('inputs' => $this->inputs, 'query' => $query);
         if ($timeout != null)
             $job['timeout'] = $timeout;
         $content = CJSON::encode($job);
