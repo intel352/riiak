@@ -4,7 +4,8 @@ namespace riiak;
 
 use \CComponent,
     \CJSON,
-    \Exception;
+    \Exception,
+    \Yii;
 
 /**
  * The Object holds meta information about a Riak object, plus the
@@ -215,7 +216,8 @@ class Object extends CComponent {
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
         $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-
+        $per = json_encode($params);    
+        
         /**
          * Construct the headers
          */
@@ -245,7 +247,11 @@ class Object extends CComponent {
         /**
          * Run the operation
          */
+        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
         $response = Utils::httpRequest($method, $url, $headers, $content);
+        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        Yii::trace('Executing SQL: Store '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'system.db.CDbCommand');
+        
         $this->populate($response, array(200, 201, 300));
         return $this;
     }
@@ -312,11 +318,17 @@ class Object extends CComponent {
          */
         $params = array('dw' => $dw);
         $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-
+        $per = json_encode($params);
+ 
         /**
          * Run the operation
          */
+        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
         $response = Utils::httpRequest('DELETE', $url);
+        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        
+        Yii::trace('Executing SQL: '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'system.db.CDbCommand');
+
         $this->populate($response, array(204, 404));
 
         return $this;

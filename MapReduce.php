@@ -4,7 +4,8 @@ namespace riiak;
 
 use \CComponent,
     \CJSON,
-    \Exception;
+    \Exception,
+    \Yii;
 
 /**
  * The MapReduce object allows you to build up and run a
@@ -271,12 +272,17 @@ class MapReduce extends CComponent {
         if ($timeout != null)
             $job['timeout'] = $timeout;
         $content = CJSON::encode($job);
-
+        $bucket = $this->inputs;
+        
+        
         /**
          * Execute the request
          */
         $url = Utils::buildUrl($this->client) . '/' . $this->client->mapredPrefix;
+        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
         $response = Utils::httpRequest('POST', $url, array(), $content);
+        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        Yii::trace('Executing SQL: '.$url. ' - Params :'.stripslashes($content) . ' - Bucket : '. $bucket .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'system.db.CDbCommand');
         $result = CJSON::decode($response['body']);
 
         /**
