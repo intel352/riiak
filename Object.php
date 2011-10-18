@@ -250,7 +250,7 @@ class Object extends CComponent {
         $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
         $response = Utils::httpRequest($method, $url, $headers, $content);
         $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        Yii::trace('Executing SQL: Store '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'system.db.CDbCommand');
+        Yii::trace('Executing SQL: Store '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
         
         $this->populate($response, array(200, 201, 300));
         return $this;
@@ -269,7 +269,14 @@ class Object extends CComponent {
          * Do the request
          */
         $url = self::buildReloadUrl($this, $r);
+        
+        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        
         $response = Utils::httpRequest('GET', $url);
+        
+        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);        
+        Yii::trace('Executing SQL: '.$url.' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
+        
         return self::populateResponse($this, $response);
     }
 
@@ -327,7 +334,7 @@ class Object extends CComponent {
         $response = Utils::httpRequest('DELETE', $url);
         $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
         
-        Yii::trace('Executing SQL: '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'system.db.CDbCommand');
+        Yii::trace('Executing SQL: '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
 
         $this->populate($response, array(204, 404));
 
@@ -489,8 +496,14 @@ class Object extends CComponent {
         $vtag = $this->siblings[$i];
         $params = array('r' => $r, 'vtag' => $vtag);
         $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        
+        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        
         $response = Utils::httpRequest('GET', $url);
-
+        
+        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        Yii::trace('Executing SQL: '.$url.' - Params :'.stripslashes(CJSON::encode($params)). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
+        
         /**
          * Respond with a new object
          */

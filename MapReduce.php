@@ -282,7 +282,7 @@ class MapReduce extends CComponent {
         $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
         $response = Utils::httpRequest('POST', $url, array(), $content);
         $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        Yii::trace('Executing SQL: '.$url. ' - Params :'.stripslashes($content) . ' - Bucket : '. $bucket .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'system.db.CDbCommand');
+        Yii::trace('Executing Query: '.$url. ' - Params :'.stripslashes($content) . ' - Bucket : '. $bucket .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
         $result = CJSON::decode($response['body']);
 
         /**

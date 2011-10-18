@@ -4,7 +4,8 @@ namespace riiak;
 
 use \CComponent,
     \CJSON,
-    \Exception;
+    \Exception,
+    \Yii;
 
 /**
  * The Bucket object allows you to access and change information
@@ -283,7 +284,11 @@ class Bucket extends CComponent {
         /**
          * Run the request
          */
+        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
         $response = Utils::httpRequest('PUT', $url, $headers, $content);
+        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        Yii::trace('Executing Query: '.$url. ' - Params :'.stripslashes($content) . ' - Bucket : '. $this->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
+        
 
         /**
          * Handle the response
@@ -336,9 +341,13 @@ class Bucket extends CComponent {
         /**
          * Run the request
          */
-        $response = Utils::httpRequest('GET', Utils::buildRestPath($this->client, $this, $key, $spec, $params)
-        );
-
+        
+        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        $url = Utils::buildRestPath($this->client, $this, $key, $spec, $params);
+        $response = Utils::httpRequest('GET',$url);
+        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
+        Yii::trace('Executing Query: '.$url. ' - Params :'.stripslashes(CJSON::encode($params)) . ' - Bucket : '. $this->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
+        
         /**
          * Use a Object to interpret the response, we are just interested in the value
          */
