@@ -33,7 +33,7 @@ class MapReduce extends CComponent {
     public $inputs = array();
 
     /**
-     * @var string 
+     * @var string
      */
     public $inputMode;
 
@@ -64,7 +64,7 @@ class MapReduce extends CComponent {
      * @param string $data
      * @return \riiak\MapReduce
      */
-    public function addBucketKeyData($bucket, $key, $data=null) {
+    public function addBucketKeyData($bucket, $key, $data = null) {
         if ($this->inputMode == 'bucket')
             throw new Exception('Already added a bucket, can\'t add an object.');
         $this->inputs[] = array((string) $bucket, (string) $key, (string) $data);
@@ -76,7 +76,7 @@ class MapReduce extends CComponent {
      * Means all of the bucket's keys will be used as inputs (expensive)
      *
      * @param string $bucket Bucket name
-     * @return \riiak\MapReduce 
+     * @return \riiak\MapReduce
      */
     public function addBucket($bucket) {
         $this->inputMode = 'bucket';
@@ -105,7 +105,7 @@ class MapReduce extends CComponent {
      * @param bool $keep Whether to keep results from this stage in map/reduce
      * @return \riiak\MapReduce
      */
-    public function link($bucket='_', $tag='_', $keep=false) {
+    public function link($bucket = '_', $tag = '_', $keep = false) {
         $this->phases[] = new LinkPhase((string) $bucket, (string) $tag, $keep);
         return $this;
     }
@@ -117,7 +117,7 @@ class MapReduce extends CComponent {
      * @param array $options Optional assoc array containing language|keep|arg
      * @return \riiak\MapReduce
      */
-    public function map($function, array $options=array()) {
+    public function map($function, array $options = array()) {
         return $this->addPhase('map', $function, $options);
     }
 
@@ -128,7 +128,7 @@ class MapReduce extends CComponent {
      * @param array $options Optional assoc array containing language|keep|arg
      * @return \riiak\MapReduce
      */
-    public function reduce($function, array $options=array()) {
+    public function reduce($function, array $options = array()) {
         return $this->addPhase('reduce', $function, $options);
     }
 
@@ -140,7 +140,7 @@ class MapReduce extends CComponent {
      * @param array $options Optional assoc array containing language|keep|arg
      * @return \riiak\MapReduce
      */
-    public function addPhase($phase, $function, array $options=array()) {
+    public function addPhase($phase, $function, array $options = array()) {
         $language = is_array($function) ? 'erlang' : 'javascript';
         $options = array_merge(
                 array('language' => $language, 'keep' => false, 'arg' => null), $options);
@@ -215,7 +215,7 @@ class MapReduce extends CComponent {
                     ));
         else
             $this->keyFilters = $filters;
-        
+
         return $this;
     }
 
@@ -226,7 +226,7 @@ class MapReduce extends CComponent {
      * @param integer $timeout Timeout in seconds. Default: null
      * @return array
      */
-    public function run($timeout=null) {
+    public function run($timeout = null) {
         $numPhases = count($this->phases);
 
         $linkResultsFlag = false;
@@ -264,7 +264,7 @@ class MapReduce extends CComponent {
                 'key_filters' => $this->keyFilters
             );
         }
-        
+
         /**
          * Construct the job, optionally set the timeout
          */
@@ -273,16 +273,14 @@ class MapReduce extends CComponent {
             $job['timeout'] = $timeout;
         $content = CJSON::encode($job);
         $bucket = $this->inputs;
-        
-        
+
+
         /**
          * Execute the request
          */
+        Yii::trace('Running Map/Reduce query', 'ext.riiak.MapReduce');
         $url = Utils::buildUrl($this->client) . '/' . $this->client->mapredPrefix;
-        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        $response = Utils::httpRequest('POST', $url, array(), $content);
-        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        Yii::trace('Executing Query: '.$url. ' - Params :'.stripslashes($content) . ' - Bucket : '. $bucket .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
+        $response = Utils::httpRequest($this->client, 'POST', $url, array(), $content);
         $result = CJSON::decode($response['body']);
 
         /**

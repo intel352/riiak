@@ -61,7 +61,7 @@ class Bucket extends CComponent {
      * @param int $r Optional: The R-Value to be returned if not null
      * @return int
      */
-    public function getR($r=null) {
+    public function getR($r = null) {
         if ($r != null)
             return $r;
         if ($this->_r != null)
@@ -100,7 +100,7 @@ class Bucket extends CComponent {
      * get/getBinary operations may use this value
      *
      * @param int $w The new W-Value
-     * @return \riiak\Bucket 
+     * @return \riiak\Bucket
      */
     public function setW($w) {
         $this->_w = $w;
@@ -138,9 +138,9 @@ class Bucket extends CComponent {
      *
      * @param string $key Name of the key
      * @param object $data Data to store (Default: null)
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
-    public function newObject($key, $data=null) {
+    public function newObject($key, $data = null) {
         return $this->newBinary($key, $data, 'application/json', true);
     }
 
@@ -153,7 +153,7 @@ class Bucket extends CComponent {
      * @param bool $jsonize Whether to treat the object as JSON (Default: false)
      * @return \riiak\Object
      */
-    public function newBinary($key, $data, $contentType='application/json', $jsonize=false) {
+    public function newBinary($key, $data, $contentType = 'application/json', $jsonize = false) {
         $obj = new Object($this->client, $this, $key);
         $obj->data = $data;
         $obj->contentType = $contentType;
@@ -168,7 +168,7 @@ class Bucket extends CComponent {
      * @param int $r R-Value of the request (Default: bucket's R)
      * @return \riiak\Object
      */
-    public function get($key, $r=null) {
+    public function get($key, $r = null) {
         return $this->getBinary($key, $r, true);
     }
 
@@ -180,18 +180,18 @@ class Bucket extends CComponent {
      * @param bool $jsonize Whether to treat the object as JSON (Default: false)
      * @return \riiak\Object
      */
-    public function getBinary($key, $r=null, $jsonize=false) {
+    public function getBinary($key, $r = null, $jsonize = false) {
         $obj = new Object($this->client, $this, $key);
         $obj->jsonize = $jsonize;
         $r = $this->getR($r);
         return $obj->reload($r);
     }
 
-    public function getMulti(array $keys, $r=null) {
+    public function getMulti(array $keys, $r = null) {
         return $this->getBinary($keys, $r, true);
     }
 
-    public function getMultiBinary(array $keys, $r=null, $jsonize=false) {
+    public function getMultiBinary(array $keys, $r = null, $jsonize = false) {
         $bucket = $this;
         $client = $this->client;
         $objects = array_map(function($key)use($jsonize, $client, $bucket) {
@@ -284,11 +284,8 @@ class Bucket extends CComponent {
         /**
          * Run the request
          */
-        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        $response = Utils::httpRequest('PUT', $url, $headers, $content);
-        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        Yii::trace('Executing Query: '.$url. ' - Params :'.stripslashes($content) . ' - Bucket : '. $this->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
-        
+        Yii::trace('Setting bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+        $response = Utils::httpRequest($this->client, 'PUT', $url, $headers, $content);
 
         /**
          * Handle the response
@@ -317,7 +314,7 @@ class Bucket extends CComponent {
     /**
      * Retrieve an array of all keys in this bucket
      * Note: this operation is pretty slow
-     * 
+     *
      * @todo Add support for streamed keys, so that keys can be chunked in large buckets
      *
      * @return array
@@ -337,17 +334,18 @@ class Bucket extends CComponent {
      * @param string $spec
      * @return \riiak\Object
      */
-    protected function fetchBucketProperties(array $params=array(), $key=null, $spec=null) {
+    protected function fetchBucketProperties(array $params = array(), $key = null, $spec = null) {
+        /**
+         * Construct the URL
+         */
+        $url = Utils::buildRestPath($this->client, $this, $key, $spec, $params);
+
         /**
          * Run the request
          */
-        
-        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        $url = Utils::buildRestPath($this->client, $this, $key, $spec, $params);
-        $response = Utils::httpRequest('GET',$url);
-        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        Yii::trace('Executing Query: '.$url. ' - Params :'.stripslashes(CJSON::encode($params)) . ' - Bucket : '. $this->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
-        
+        Yii::trace('Fetching bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+        $response = Utils::httpRequest($this->client, 'GET', $url);
+
         /**
          * Use a Object to interpret the response, we are just interested in the value
          */

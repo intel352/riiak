@@ -11,9 +11,9 @@ use \CComponent,
  * The Object holds meta information about a Riak object, plus the
  * object's data.
  * @package riiak
- * 
+ *
  * Magic properties
- * 
+ *
  * Private
  * @property string vclock
  */
@@ -78,7 +78,7 @@ class Object extends CComponent {
      * @param \riiak\Bucket $bucket A Bucket object
      * @param string $key Optional - If empty, generated upon store()
      */
-    public function __construct(Riiak $client, Bucket $bucket, $key=null) {
+    public function __construct(Riiak $client, Bucket $bucket, $key = null) {
         $this->client = $client;
         $this->bucket = $bucket;
         $this->key = $key;
@@ -136,7 +136,7 @@ class Object extends CComponent {
     /**
      * Whether the object exists
      *
-     * @return bool 
+     * @return bool
      */
     public function getExists() {
         return $this->_exists;
@@ -147,9 +147,9 @@ class Object extends CComponent {
      *
      * @param \riiak\Link|\riiak\Object $obj Either Object or Link
      * @param string $tag Optional: link tag. Default: bucket name. Ignored for Link
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
-    public function addLink($obj, $tag=null) {
+    public function addLink($obj, $tag = null) {
         if ($obj instanceof Link)
             $newlink = $obj;
         else
@@ -166,9 +166,9 @@ class Object extends CComponent {
      *
      * @param \riiak\Link|\riiak\Object $obj Either Object or Link
      * @param string $tag Optional: link tag. Default: bucket name. Ignored for Link
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
-    public function removeLink($obj, $tag=null) {
+    public function removeLink($obj, $tag = null) {
         if ($obj instanceof Link)
             $oldlink = $obj;
         else
@@ -202,9 +202,9 @@ class Object extends CComponent {
      *
      * @param int $w W-Value: X paritions must respond before returning
      * @param int $dw DW-Value: X partitions must confirm write before returning
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
-    public function store($w=null, $dw=null) {
+    public function store($w = null, $dw = null) {
         /**
          * Use defaults if not specified
          */
@@ -216,8 +216,8 @@ class Object extends CComponent {
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
         $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-        $per = json_encode($params);    
-        
+        $per = json_encode($params);
+
         /**
          * Construct the headers
          */
@@ -247,11 +247,9 @@ class Object extends CComponent {
         /**
          * Run the operation
          */
-        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        $response = Utils::httpRequest($method, $url, $headers, $content);
-        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        Yii::trace('Executing SQL: Store '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
-        
+        Yii::trace('Storing object "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, $method, $url, $headers, $content);
+
         $this->populate($response, array(200, 201, 300));
         return $this;
     }
@@ -262,34 +260,31 @@ class Object extends CComponent {
      * in Riak since it was last retrieved.
      *
      * @param int $r R-Value: X partitions must respond before returning
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
-    public function reload($r=null) {
+    public function reload($r = null) {
         /**
          * Do the request
          */
         $url = self::buildReloadUrl($this, $r);
-        
-        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        
-        $response = Utils::httpRequest('GET', $url);
-        
-        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);        
-        Yii::trace('Executing SQL: '.$url.' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
-        
+
+        Yii::trace('Reloading object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, 'GET', $url);
+
         return self::populateResponse($this, $response);
     }
 
-    public static function reloadMulti(array $objects, $r=null) {
+    public static function reloadMulti(Riiak $client, array $objects, $r = null) {
+        Yii::trace('Reloading multiple objects', 'ext.riiak.Object');
         $objects = array_combine(array_map(array('self', 'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
-        $responses = Utils::httpMultiRequest('GET', array_keys($objects));
+        $responses = Utils::httpMultiRequest($client, 'GET', array_keys($objects));
         array_walk($objects, function(&$object, $url)use(&$responses) {
-            Object::populateResponse($object, $responses[$url]);
-        });
+                    Object::populateResponse($object, $responses[$url]);
+                });
         return $objects;
     }
 
-    protected static function buildReloadUrl(Object $object, $r=null) {
+    protected static function buildReloadUrl(Object $object, $r = null) {
         $params = array('r' => $object->bucket->getR($r));
         return Utils::buildRestPath($object->client, $object->bucket, $object->key, null, $params);
     }
@@ -312,9 +307,9 @@ class Object extends CComponent {
      * Delete this object from Riak
      *
      * @param int $dw DW-Value: X partitions must delete object before returning
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
-    public function delete($dw=null) {
+    public function delete($dw = null) {
         /**
          * Use defaults if not specified
          */
@@ -325,16 +320,12 @@ class Object extends CComponent {
          */
         $params = array('dw' => $dw);
         $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-        $per = json_encode($params);
- 
+
         /**
          * Run the operation
          */
-        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        $response = Utils::httpRequest('DELETE', $url);
-        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        
-        Yii::trace('Executing SQL: '.$url.' - Params :'.stripslashes($per). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
+        Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, 'DELETE', $url);
 
         $this->populate($response, array(204, 404));
 
@@ -344,7 +335,7 @@ class Object extends CComponent {
     /**
      * Reset this object
      *
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
     private function clear() {
         $this->headers = array();
@@ -372,7 +363,7 @@ class Object extends CComponent {
      *
      * @param array $response Output of Utils::httpRequest
      * @param array $expectedStatuses List of statuses
-     * @return \riiak\Object 
+     * @return \riiak\Object
      */
     public function populate($response, $expectedStatuses) {
         $this->clear();
@@ -447,7 +438,7 @@ class Object extends CComponent {
 
     /**
      * Populate object links
-     * 
+     *
      * @return \riiak\Object
      */
     private function populateLinks($linkHeaders) {
@@ -484,7 +475,7 @@ class Object extends CComponent {
      * @param int $r R-Value: X partitions must respond before returning
      * @return \riiak\Object
      */
-    public function getSibling($i, $r=null) {
+    public function getSibling($i, $r = null) {
         /**
          * Use defaults if not specified
          */
@@ -496,14 +487,10 @@ class Object extends CComponent {
         $vtag = $this->siblings[$i];
         $params = array('r' => $r, 'vtag' => $vtag);
         $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-        
-        $startTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        
-        $response = Utils::httpRequest('GET', $url);
-        
-        $endTime = date("H:i:s") . substr((string)microtime(), 1, 8);
-        Yii::trace('Executing SQL: '.$url.' - Params :'.stripslashes(CJSON::encode($params)). ' - Bucket : '.(string) $this->bucket->name .' - Execution Start Time : '.$startTime . ' - Execution End Time : '.$endTime ,'ext.'.get_class($this));
-        
+
+        Yii::trace('Fetching sibling "' . $i . '" of object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, 'GET', $url);
+
         /**
          * Respond with a new object
          */
@@ -519,7 +506,7 @@ class Object extends CComponent {
      * @param int $r R-Value: X partitions must respond before returning
      * @return array Array of Objects
      */
-    public function getSiblings($r=null) {
+    public function getSiblings($r = null) {
         $a = array();
         for ($i = 0; $i < $this->getSiblingCount(); $i++) {
             $a[] = $this->getSibling($i, $r);
@@ -533,7 +520,7 @@ class Object extends CComponent {
      * @param bool $reset Whether to create a new MapReduce instance
      * @return \riiak\MapReduce
      */
-    public function getMapReduce($reset=false) {
+    public function getMapReduce($reset = false) {
         return $this->client->getMapReduce($reset);
     }
 
