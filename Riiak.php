@@ -92,6 +92,12 @@ class Riiak extends CApplicationComponent {
      * @var \riiak\MapReduce
      */
     protected $_mr;
+    /**
+     * Transport layer object
+     * 
+     * @var Object 
+     */
+    public $_transport;
 
     public function init() {
         parent::init();
@@ -100,6 +106,11 @@ class Riiak extends CApplicationComponent {
          */
         if (empty($this->clientId))
             $this->clientId = 'php_' . base64_encode(rand(1, 1073741824));
+        /**
+         * Create transport layer object for handling transport layer actions.
+         * @todo Will update all transport layer methods to static so that we will minimize memory utilization.
+         */
+        $this->_transport =  new Transport();
     }
 
     /**
@@ -118,13 +129,7 @@ class Riiak extends CApplicationComponent {
      * @return array
      */
     public function buckets() {
-        Yii::trace('Fetching list of buckets', 'ext.riiak.Riiak');
-        $response = Utils::httpRequest($this->client, 'GET', Utils::buildRestPath($this) . '?buckets=true');
-        $responseObj = CJSON::decode($response['body']);
-        $buckets = array();
-        foreach ($responseObj->buckets as $name)
-            $buckets[] = $this->bucket($name);
-        return $buckets;
+        return $this->_transport->buckets($this);        
     }
 
     /**
@@ -133,9 +138,7 @@ class Riiak extends CApplicationComponent {
      * @return bool
      */
     public function getIsAlive() {
-        Yii::trace('Pinging Riak server', 'ext.riiak.Riiak');
-        $response = Utils::httpRequest('GET', Utils::buildUrl($this) . '/ping');
-        return ($response != NULL) && ($response['body'] == 'OK');
+        return $this->_transport->getIsAlive($this);
     }
 
     /**

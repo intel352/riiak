@@ -49,10 +49,21 @@ class Bucket extends CComponent {
      * @var int
      */
     protected $_dw;
-
+    /**
+     * Transport layer object
+     * 
+     * @var Object 
+     */
+    public $_transport;
+    
     public function __construct(Riiak $client, $name) {
         $this->client = $client;
         $this->name = $name;
+        /**
+         * Create transport level object for handling transport layer actions.
+         * @todo Will update all transport layer methods to static so that we will minimize memory utilization.
+         */
+        $this->_transport = new Transport();
     }
 
     /**
@@ -275,30 +286,9 @@ class Bucket extends CComponent {
      */
     public function setProperties(array $props) {
         /**
-         * Construct the URL, Headers, and Content
+         * Call transport layer method to set bucket properties for transport layer actions.
          */
-        $url = Utils::buildRestPath($this->client, $this);
-        $headers = array('Content-Type: application/json');
-        $content = CJSON::encode(array('props' => $props));
-
-        /**
-         * Run the request
-         */
-        Yii::trace('Setting bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = Utils::httpRequest($this->client, 'PUT', $url, $headers, $content);
-
-        /**
-         * Handle the response
-         */
-        if ($response == null)
-            throw new Exception('Error setting bucket properties.');
-
-        /**
-         * Check the response value
-         */
-        $status = $response['headers']['http_code'];
-        if ($status != 204)
-            throw new Exception('Error setting bucket properties.');
+        $this->_transport->setBucketProperties($props, $this);
     }
 
     /**
@@ -336,25 +326,9 @@ class Bucket extends CComponent {
      */
     protected function fetchBucketProperties(array $params = array(), $key = null, $spec = null) {
         /**
-         * Construct the URL
+         * Call transport layer method to fetch all bucket properties
          */
-        $url = Utils::buildRestPath($this->client, $this, $key, $spec, $params);
-
-        /**
-         * Run the request
-         */
-        Yii::trace('Fetching bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = Utils::httpRequest($this->client, 'GET', $url);
-
-        /**
-         * Use a Object to interpret the response, we are just interested in the value
-         */
-        $obj = new Object($this->client, $this);
-        $obj->populate($response, array(200));
-        if (!$obj->exists)
-            throw new Exception('Error getting bucket properties.');
-
-        return $obj;
+        return $this->_transport->fetchBucketProperties($params, $key, $spec, $this);
     }
 
 }
