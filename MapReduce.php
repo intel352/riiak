@@ -41,9 +41,21 @@ class MapReduce extends CComponent {
      * @var array
      */
     public $keyFilters = array();
+    
+    /**
+     * Transport layer object
+     * 
+     * @var Object 
+     */
+    public $_transport;
 
     public function __construct(Riiak $client) {
         $this->client = $client;
+        /**
+         * Create transport layer object for handling transport layer actions.
+         * @todo Will update all transport layer methods to static so that we will minimize memory utilization.
+         */
+        $this->_transport = new Transport();
     }
 
     /**
@@ -218,7 +230,6 @@ class MapReduce extends CComponent {
 
         return $this;
     }
-
     /**
      * Run the map/reduce operation. Returns array of results
      * or Link objects if last phase is link phase
@@ -227,85 +238,6 @@ class MapReduce extends CComponent {
      * @return array
      */
     public function run($timeout = null) {
-        $numPhases = count($this->phases);
-
-        $linkResultsFlag = false;
-
-        /**
-         * If there are no phases, then just echo the inputs back to the user.
-         */
-        if ($numPhases == 0) {
-            $this->reduce(array('riak_kv_mapreduce', 'reduce_identity'));
-            $numPhases = 1;
-            $linkResultsFlag = true;
-        }
-
-        /**
-         * Convert all phases to associative arrays. Also, if none of the
-         * phases are accumulating, then set the last one to accumulate.
-         */
-        $keepFlag = false;
-        $query = array();
-        for ($i = 0; $i < $numPhases; $i++) {
-            $phase = $this->phases[$i];
-            if ($i == ($numPhases - 1) && !$keepFlag)
-                $phase->keep = true;
-            if ($phase->keep)
-                $keepFlag = true;
-            $query[] = $phase->toArray();
-        }
-
-        /**
-         * Add key filters if applicable
-         */
-        if ($this->inputMode == 'bucket' && count($this->keyFilters) > 0) {
-            $this->inputs = array(
-                'bucket' => $this->inputs,
-                'key_filters' => $this->keyFilters
-            );
-        }
-
-        /**
-         * Construct the job, optionally set the timeout
-         */
-        $job = array('inputs' => $this->inputs, 'query' => $query);
-        if ($timeout != null)
-            $job['timeout'] = $timeout;
-        $content = CJSON::encode($job);
-        $bucket = $this->inputs;
-
-
-        /**
-         * Execute the request
-         */
-        Yii::trace('Running Map/Reduce query', 'ext.riiak.MapReduce');
-        $url = Utils::buildUrl($this->client) . '/' . $this->client->mapredPrefix;
-        $response = Utils::httpRequest($this->client, 'POST', $url, array(), $content);
-        $result = CJSON::decode($response['body']);
-
-        /**
-         * If the last phase is NOT a link phase, then return the result.
-         */
-        $linkResultsFlag |= ( end($this->phases) instanceof LinkPhase);
-
-        /**
-         * If we don't need to link results, then just return.
-         */
-        if (!$linkResultsFlag)
-            return $result;
-
-        /**
-         * Otherwise, if the last phase IS a link phase, then convert the
-         * results to Link objects.
-         */
-        $a = array();
-        foreach ($result as $r) {
-            $tag = isset($r[2]) ? $r[2] : null;
-            $link = new Link($r[0], $r[1], $tag);
-            $link->client = $this->client;
-            $a[] = $link;
-        }
-        return $a;
+        return $this->_transport->run($timeout, $this);
     }
-
 }

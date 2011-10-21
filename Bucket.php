@@ -49,21 +49,11 @@ class Bucket extends CComponent {
      * @var int
      */
     protected $_dw;
-    /**
-     * Transport layer object
-     * 
-     * @var Object 
-     */
-    public $_transport;
+    
     
     public function __construct(Riiak $client, $name) {
         $this->client = $client;
         $this->name = $name;
-        /**
-         * Create transport level object for handling transport layer actions.
-         * @todo Will update all transport layer methods to static so that we will minimize memory utilization.
-         */
-        $this->_transport = new Transport();
     }
 
     /**
@@ -288,7 +278,7 @@ class Bucket extends CComponent {
         /**
          * Call transport layer method to set bucket properties for transport layer actions.
          */
-        $this->_transport->setBucketProperties($props, $this);
+        Transport::setBucketProperties($props, $this);
     }
 
     /**
@@ -310,11 +300,63 @@ class Bucket extends CComponent {
      * @return array
      */
     public function getKeys() {
-        $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'true'));
+        $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'));
         if (empty($obj->data['keys']))
             return array();
-        return array_map('urldecode', $obj->data['keys']);
+        return array_map('urldecode', array_unique($obj->data['keys']));
     }
+    
+    /**
+    * Method to remove bulk of empty keys from riak response.
+    * 
+    * @param array $response
+    * @param array $params
+    * @return String  List of keys in JSON format.
+    */
+   public function getStreamedBucketKeys(array $response, array $params){
+       /**
+        * Check if keys!=stream then return same response body.
+        */
+        if(!array_key_exists('keys', $params) || $params['keys'] != 'stream')
+            return $response['body'];
+        
+        /**
+         * Declare required variables
+         */
+        $arrInput = array();
+        $arrOutput = array();
+        $strKeys = '';
+        /**
+         *  Convert input string into array
+         *  for example : 
+         *  Input string is {"keys":[]}{"keys":["admin"]}{"keys":[]}{"keys":["test"]} etc. 
+         *  then output wiil be {"keys":[]},{"keys":["admin"]},{"keys":[]},{"keys":["test"]}
+         */
+        $arrInput = explode(',', str_replace('}{','},{', $response['body']));
+        /**
+         * Prepare loop to process input array.
+         */
+        foreach($arrInput as $index => $value){
+           /**
+            *  Decode input string '"keys":["admin"]' into array.
+            */
+           $data = (array)CJSON::decode($value);
+           
+           /**
+            *  Check for keys count is greate than 0.
+            */
+           if( 1 < count($data['keys'])){
+               $strKeys .= implode(',', $data['keys']) . ',';
+           }else if(0 < count($data['keys'])){
+               $strKeys .= $data['keys'][0] . ',';
+           }
+        }
+        /**
+         * Return list of keys as JSON string.
+         */
+        $arrOutput["keys"] = explode(',', substr($strKeys, 0, strlen($strKeys) - 1));
+        return CJSON::encode($arrOutput);
+   }
 
     /**
      * Fetches bucket
@@ -328,7 +370,7 @@ class Bucket extends CComponent {
         /**
          * Call transport layer method to fetch all bucket properties
          */
-        return $this->_transport->fetchBucketProperties($params, $key, $spec, $this);
+        return Transport::fetchBucketProperties($params, $key, $spec, $this);
     }
 
 }

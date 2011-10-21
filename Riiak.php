@@ -41,6 +41,20 @@ class Riiak extends CApplicationComponent {
      * @var string Default: 'riak'
      */
     public $prefix = 'riak';
+    
+    /**
+     * Riak key stream url prefix
+     * 
+     * @var string Default: 'buckets' 
+     */
+    public $bucketPrefix = 'buckets';
+    
+    /**
+     * Riak key stream prefix
+     * 
+     * @var string 
+     */
+    public $keyPrefix = 'keys';
 
     /**
      * MapReduce prefix
@@ -92,13 +106,7 @@ class Riiak extends CApplicationComponent {
      * @var \riiak\MapReduce
      */
     protected $_mr;
-    /**
-     * Transport layer object
-     * 
-     * @var Object 
-     */
-    public $_transport;
-
+    
     public function init() {
         parent::init();
         /**
@@ -106,11 +114,6 @@ class Riiak extends CApplicationComponent {
          */
         if (empty($this->clientId))
             $this->clientId = 'php_' . base64_encode(rand(1, 1073741824));
-        /**
-         * Create transport layer object for handling transport layer actions.
-         * @todo Will update all transport layer methods to static so that we will minimize memory utilization.
-         */
-        $this->_transport =  new Transport();
     }
 
     /**
@@ -129,7 +132,7 @@ class Riiak extends CApplicationComponent {
      * @return array
      */
     public function buckets() {
-        return $this->_transport->buckets($this);        
+        return Transport::buckets($this);        
     }
 
     /**
@@ -138,7 +141,7 @@ class Riiak extends CApplicationComponent {
      * @return bool
      */
     public function getIsAlive() {
-        return $this->_transport->getIsAlive($this);
+        return Transport::getIsAlive($this);
     }
 
     /**
