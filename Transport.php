@@ -57,7 +57,7 @@ class Transport extends CComponent {
      * @param Object $objBucket
      * @return \riiak\Object
      */
-    public static function fetchBucketProperties(array $params=array(), $key=null, $spec=null, $objBucket) {
+    public static function fetchBucketProperties(array $params = array(), $key = null, $spec = null, $objBucket) {
         /**
          * Construct the URL
          */
@@ -176,6 +176,7 @@ class Transport extends CComponent {
 
         return $path;
     }
+    
     /**
      * Builds a CURL URL to access Riak API
      *
@@ -211,6 +212,7 @@ class Transport extends CComponent {
 
         return $curlOptions;
     }
+    
     /**
      * Builds curl options array
      *

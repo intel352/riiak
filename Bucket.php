@@ -319,6 +319,10 @@ class Bucket extends CComponent {
         */
         if(!array_key_exists('keys', $params) || $params['keys'] != 'stream')
             return $response['body'];
+       /**
+        * Replace all blank array keys.
+        */
+        $response['body'] = str_replace('{"keys":[]}', '', $response['body']);
         
         /**
          * Declare required variables
@@ -332,7 +336,7 @@ class Bucket extends CComponent {
          *  Input string is {"keys":[]}{"keys":["admin"]}{"keys":[]}{"keys":["test"]} etc. 
          *  then output wiil be {"keys":[]},{"keys":["admin"]},{"keys":[]},{"keys":["test"]}
          */
-        $arrInput = explode(',', str_replace('}{','},{', $response['body']));
+        $arrInput = explode('#,#', str_replace('}{','}#,#{', $response['body']));
         /**
          * Prepare loop to process input array.
          */
@@ -345,16 +349,16 @@ class Bucket extends CComponent {
            /**
             *  Check for keys count is greate than 0.
             */
-           if( 1 < count($data['keys'])){
-               $strKeys .= implode(',', $data['keys']) . ',';
-           }else if(0 < count($data['keys'])){
-               $strKeys .= $data['keys'][0] . ',';
+           if( array_key_exists('keys', $data) && 1 < count($data['keys'])){
+               $strKeys .= implode('#,#', $data['keys']) . '#,#';
+           }else if(array_key_exists('keys', $data) && 0 < count($data['keys'])){
+               $strKeys .= $data['keys'][0] . '#,#';
            }
         }
         /**
          * Return list of keys as JSON string.
          */
-        $arrOutput["keys"] = explode(',', substr($strKeys, 0, strlen($strKeys) - 1));
+        $arrOutput["keys"] = explode('#,#', substr($strKeys, 0, strlen($strKeys) - 3));
         return CJSON::encode($arrOutput);
    }
 
