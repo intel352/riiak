@@ -18,7 +18,7 @@ class Transport extends CComponent {
      * what you're doing
      *
      * @param array $props An associative array of $key=>$value
-     * @param object $objBucket An Bucket class object.
+     * @param \riiak\Bucket $objBucket An Bucket class object.
      */
     public static function setBucketProperties(array $props, Bucket $objBucket) {
         /**
@@ -54,10 +54,10 @@ class Transport extends CComponent {
      * @param array $params
      * @param string $key
      * @param string $spec
-     * @param Object $objBucket
+     * @param \riiak\Object $objBucket
      * @return \riiak\Object
      */
-    public static function fetchBucketProperties(array $params=array(), $key=null, $spec=null, $objBucket) {
+    public static function fetchBucketProperties(array $params=array(), $key=null, $spec=null, Object $objBucket) {
         /**
          * Construct the URL
          */

@@ -70,13 +70,6 @@ class Object extends CComponent {
      * @var mixed
      */
     protected $_data;
-    
-    /**
-     * Transport layer object
-     * 
-     * @var Object 
-     */
-    public $_transport;
 
     /**
      * Construct a new Object
@@ -89,11 +82,6 @@ class Object extends CComponent {
         $this->client = $client;
         $this->bucket = $bucket;
         $this->key = $key;
-        /**
-         * Create transport layer object for handling transport layer actions.
-         * @todo Will update all transport layer methods to static so that we will minimize memory utilization.
-         */
-        $this->_transport = new Transport();
     }
 
     /**
@@ -218,9 +206,51 @@ class Object extends CComponent {
      */
     public function store($w = null, $dw = null) {
         /**
-         * Call transport layer method to store objects in Riak.
+         * Use defaults if not specified
          */
-        return $this->_transport->store($w, $dw, $this);
+        $w = $this->bucket->getW($w);
+        $dw = $this->bucket->getDW($w);
+
+        /**
+         * Construct the URL
+         */
+        $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
+        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+
+        /**
+         * Construct the headers
+         */
+        $headers = array('Accept: text/plain, */*; q=0.5',
+            'Content-Type: ' . $this->getContentType(),
+            'X-Riak-ClientId: ' . $this->client->clientId);
+
+        /**
+         * Add the vclock if it exists
+         */
+        if (!empty($this->vclock))
+            $headers[] = 'X-Riak-Vclock: ' . $this->vclock;
+
+        /**
+         * Add the Links
+         */
+        foreach ($this->_links as $link)
+            $headers[] = 'Link: ' . $link->toLinkHeader($this->client);
+
+        if ($this->jsonize)
+            $content = CJSON::encode($this->_data);
+        else
+            $content = $this->_data;
+
+        $method = $this->key ? 'PUT' : 'POST';
+
+        /**
+         * Run the operation
+         */
+        Yii::trace('Storing object "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, $method, $url, $headers, $content);
+
+        $this->populate($response, array(200, 201, 300));
+        return $this;
     }
 
     /**
@@ -232,39 +262,44 @@ class Object extends CComponent {
      * @return \riiak\Object
      */
     public function reload($r = null) {
-        return $this->_transport->reload($r, $this);
-    }
-    /**
-     * Method to reload multiple objects
-     * 
-     * @param Riiak $client
-     * @param array $objects
-     * @param String $r
-     * @return Object \riiak\Object
-     */
-    public static function reloadMulti(Riiak $client, array $objects, $r = null) {
-        return Transport::reloadMulti($client, $objects, $r);
-    }
-    /**
-     * Method to build reload URL.
-     * 
-     * @param Object $object
-     * @param String $r
-     * @return String 
-     */
-    protected static function buildReloadUrl(Object $object, $r = null) {
-        return Transport::buildReloadUrl($object, $r);
+        /**
+         * Do the request
+         */
+        $url = self::buildReloadUrl($this, $r);
+
+        Yii::trace('Reloading object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, 'GET', $url);
+
+        return self::populateResponse($this, $response);
     }
 
-    /**
-     * Method to prepare objects response.
-     * 
-     * @param Object $object
-     * @param Array $response
-     * @return Object \riiak\Object 
-     */
+    public static function reloadMulti(Riiak $client, array $objects, $r = null) {
+        Yii::trace('Reloading multiple objects', 'ext.riiak.Object');
+        $objects = array_combine(array_map(array('self', 'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
+        $responses = Utils::httpMultiRequest($client, 'GET', array_keys($objects));
+        array_walk($objects, function(&$object, $url)use(&$responses) {
+                    Object::populateResponse($object, $responses[$url]);
+                });
+        return $objects;
+    }
+
+    protected static function buildReloadUrl(Object $object, $r = null) {
+        $params = array('r' => $object->bucket->getR($r));
+        return Utils::buildRestPath($object->client, $object->bucket, $object->key, null, $params);
+    }
+
     public static function populateResponse(Object &$object, $response) {
-        return Transport::populateResponse($object, $response);
+        $object->populate($response, array(200, 300, 404));
+
+        /**
+         * If there are siblings, load the data for the first one by default
+         */
+        if ($object->getHasSiblings()) {
+            $obj = $this->getSibling(0);
+            $object->_data = $obj->data;
+        }
+
+        return $object;
     }
 
     /**
@@ -274,7 +309,26 @@ class Object extends CComponent {
      * @return \riiak\Object
      */
     public function delete($dw = null) {
-       return $this->_transport->delete($dw, $this);
+        /**
+         * Use defaults if not specified
+         */
+        $dw = $this->bucket->getDW($dw);
+
+        /**
+         * Construct the URL
+         */
+        $params = array('dw' => $dw);
+        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+
+        /**
+         * Run the operation
+         */
+        Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, 'DELETE', $url);
+
+        $this->populate($response, array(204, 404));
+
+        return $this;
     }
 
     /**
@@ -306,7 +360,7 @@ class Object extends CComponent {
     /**
      * Populates the object. Only for internal use
      *
-     * @param array $response Output of Transport::httpRequest
+     * @param array $response Output of Utils::httpRequest
      * @param array $expectedStatuses List of statuses
      * @return \riiak\Object
      */
@@ -329,7 +383,7 @@ class Object extends CComponent {
          * Check if the server is down (status==0)
          */
         if ($this->status == 0)
-            throw new Exception('Could not contact Riak Server: ' . Transport::buildUrl($this->client) . '!');
+            throw new Exception('Could not contact Riak Server: ' . Utils::buildUrl($this->client) . '!');
 
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
@@ -421,7 +475,28 @@ class Object extends CComponent {
      * @return \riiak\Object
      */
     public function getSibling($i, $r = null) {
-        return $this->_transport->getSibling($i, $r, $this);
+        /**
+         * Use defaults if not specified
+         */
+        $r = $this->bucket->getR($r);
+
+        /**
+         * Run the request
+         */
+        $vtag = $this->siblings[$i];
+        $params = array('r' => $r, 'vtag' => $vtag);
+        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+
+        Yii::trace('Fetching sibling "' . $i . '" of object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+        $response = Utils::httpRequest($this->client, 'GET', $url);
+
+        /**
+         * Respond with a new object
+         */
+        $obj = new Object($this->client, $this->bucket, $this->key);
+        $obj->jsonize = $this->jsonize;
+        $obj->populate($response, array(200));
+        return $obj;
     }
 
     /**
