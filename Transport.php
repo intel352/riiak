@@ -176,6 +176,7 @@ class Transport extends CComponent {
 
         return $path;
     }
+    
     /**
      * Builds a CURL URL to access Riak API
      *
@@ -211,6 +212,7 @@ class Transport extends CComponent {
 
         return $curlOptions;
     }
+    
     /**
      * Builds curl options array
      *
