@@ -216,7 +216,6 @@ class Object extends CComponent {
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
         $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-        $per = json_encode($params);
 
         /**
          * Construct the headers
