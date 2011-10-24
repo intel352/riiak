@@ -107,6 +107,20 @@ class Riiak extends CApplicationComponent {
      */
     protected $_mr;
     
+    /**
+     *  Create transport layer object
+     * 
+     * @var object 
+     */
+    public $_transport;
+    
+    /**
+     * Define transport layer protocol
+     * 
+     * @var string Default: http
+     */
+    public $_TLProtocol = 'http';
+    
     public function init() {
         parent::init();
         /**
@@ -114,6 +128,43 @@ class Riiak extends CApplicationComponent {
          */
         if (empty($this->clientId))
             $this->clientId = 'php_' . base64_encode(rand(1, 1073741824));
+        /**
+         * Check if transport layer object is present or not.
+         */
+        if(!is_object($this->_transport)){
+            /**
+             * Create transport layer object.
+             */
+            $this->_transport = $this->createTLObject($this->_TLProtocol);
+        }
+    }
+    
+    /**
+     * Method to create transport layer object as per the protocol.
+     * 
+     * @param String $strProtocol
+     * @return Object Transport Layer object
+     */
+    public static function createTLObject($strProtocol){
+        switch($strProtocol){
+            case 'http':
+                /**
+                 * HTTP Transport layer class object.
+                 */
+                return new transport\http\Transport();
+                break;
+            case 'PBC':
+                /**
+                 * Protocol Buffer Transport layer class object.
+                 */
+                break;
+            default:
+                /**
+                 * Default: HTTP Transport layer class object.
+                 */
+                return new transport\http\Transport();
+                break;
+        }
     }
 
     /**

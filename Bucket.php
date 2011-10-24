@@ -276,17 +276,14 @@ class Bucket extends CComponent {
      */
     public function setProperties(array $props) {
         /**
-         * Construct the URL, Headers, and Content
+         * Construct the Contents
          */
-        $url = Utils::buildRestPath($this->client, $this);
-        $headers = array('Content-Type: application/json');
         $content = CJSON::encode(array('props' => $props));
-
         /**
          * Run the request
          */
         Yii::trace('Setting Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = Utils::httpRequest($this->client, 'PUT', $url, $headers, $content);
+        $response = $this->client->_transport->put($this->client, $this, $content);
 
         /**
          * Handle the response
@@ -297,7 +294,7 @@ class Bucket extends CComponent {
         /**
          * Check the response value
          */
-        $status = $response['headers']['http_code'];
+        $status = $response['statusCode'];
         if ($status != 204)
             throw new Exception('Error setting bucket properties.');
         
@@ -328,61 +325,7 @@ class Bucket extends CComponent {
         return array_map('urldecode', array_unique($obj->data['keys']));
     }
     
-    /**
-    * Method to remove bulk of empty keys from riak response.
-    * 
-    * @param array $response
-    * @param array $params
-    * @return String  List of keys in JSON format.
-    */
-   public function getStreamedBucketKeys(array $response, array $params){
-       /**
-        * Check if keys!=stream then return same response body.
-        */
-        if(!array_key_exists('keys', $params) || $params['keys'] != 'stream')
-            return $response['body'];
-       /**
-        * Replace all blank array keys.
-        */
-        $response['body'] = str_replace('{"keys":[]}', '', $response['body']);
-        
-        /**
-         * Declare required variables
-         */
-        $arrInput = array();
-        $arrOutput = array();
-        $strKeys = '';
-        /**
-         *  Convert input string into array
-         *  for example : 
-         *  Input string is {"keys":[]}{"keys":["admin"]}{"keys":[]}{"keys":["test"]} etc. 
-         *  then output wiil be {"keys":[]},{"keys":["admin"]},{"keys":[]},{"keys":["test"]}
-         */
-        $arrInput = explode('#,#', str_replace('}{','}#,#{', $response['body']));
-        /**
-         * Prepare loop to process input array.
-         */
-        foreach($arrInput as $index => $value){
-           /**
-            *  Decode input string '"keys":["admin"]' into array.
-            */
-           $data = (array)CJSON::decode($value);
-           
-           /**
-            *  Check for keys count is greate than 0.
-            */
-           if( array_key_exists('keys', $data) && 1 < count($data['keys'])){
-               $strKeys .= implode('#,#', $data['keys']) . '#,#';
-           }else if(array_key_exists('keys', $data) && 0 < count($data['keys'])){
-               $strKeys .= $data['keys'][0] . '#,#';
-           }
-        }
-        /**
-         * Return list of keys as JSON string.
-         */
-        $arrOutput["keys"] = explode('#,#', substr($strKeys, 0, strlen($strKeys) - 3));
-        return CJSON::encode($arrOutput);
-   }
+    
 
     /**
      * Fetches bucket
@@ -394,20 +337,10 @@ class Bucket extends CComponent {
      */
     protected function fetchBucketProperties(array $params = array(), $key = null, $spec = null) {
         /**
-         * Construct the URL
-         */
-        $url = Utils::buildRestPath($this->client, $this, $key, $spec, $params);
-        
-        /**
          * Run the request
          */
         Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = Utils::httpRequest($this->client, 'GET', $url);
-        
-        /**
-         * Remove bulk of empty keys.
-         */
-        $response['body'] = $this->getStreamedBucketKeys($response, $params);
+        $response = $this->client->_transport->get($this->client, $this, $params, $key, $spec);
         
         /**
          * Use a Object to interpret the response, we are just interested in the value
