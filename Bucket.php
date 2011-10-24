@@ -276,9 +276,31 @@ class Bucket extends CComponent {
      */
     public function setProperties(array $props) {
         /**
-         * Call transport layer method to set bucket properties for transport layer actions.
+         * Construct the URL, Headers, and Content
          */
-        Transport::setBucketProperties($props, $this);
+        $url = Utils::buildRestPath($this->client, $this);
+        $headers = array('Content-Type: application/json');
+        $content = CJSON::encode(array('props' => $props));
+
+        /**
+         * Run the request
+         */
+        Yii::trace('Setting Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+        $response = Utils::httpRequest($this->client, 'PUT', $url, $headers, $content);
+
+        /**
+         * Handle the response
+         */
+        if ($response == null)
+            throw new Exception('Error setting bucket properties.');
+
+        /**
+         * Check the response value
+         */
+        $status = $response['headers']['http_code'];
+        if ($status != 204)
+            throw new Exception('Error setting bucket properties.');
+        
     }
 
     /**
@@ -372,9 +394,30 @@ class Bucket extends CComponent {
      */
     protected function fetchBucketProperties(array $params = array(), $key = null, $spec = null) {
         /**
-         * Call transport layer method to fetch all bucket properties
+         * Construct the URL
          */
-        return Transport::fetchBucketProperties($params, $key, $spec, $this);
+        $url = Utils::buildRestPath($this->client, $this, $key, $spec, $params);
+        
+        /**
+         * Run the request
+         */
+        Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+        $response = Utils::httpRequest($this->client, 'GET', $url);
+        
+        /**
+         * Remove bulk of empty keys.
+         */
+        $response['body'] = $this->getStreamedBucketKeys($response, $params);
+        
+        /**
+         * Use a Object to interpret the response, we are just interested in the value
+         */
+        $obj = new Object($this->client, $this);
+        $obj->populate($response, array(200));
+        if (!$obj->exists)
+            throw new Exception('Error getting bucket properties.');
+        
+        return $obj;
     }
 
 }

@@ -132,7 +132,14 @@ class Riiak extends CApplicationComponent {
      * @return array
      */
     public function buckets() {
-        return Transport::buckets($this);        
+         Yii::trace('Fetching list of buckets', 'ext.riiak.Riiak');
+        $response = Utils::httpRequest($this->client, 'GET', Utils::buildRestPath($this) . '?buckets=true');
+        $responseObj = CJSON::decode($response['body']);
+        $buckets = array();
+        foreach ($responseObj->buckets as $name)
+            $buckets[] = $this->bucket($name);
+        
+        return $buckets; 
     }
 
     /**
@@ -141,7 +148,9 @@ class Riiak extends CApplicationComponent {
      * @return bool
      */
     public function getIsAlive() {
-        return Transport::getIsAlive($this);
+        Yii::trace('Pinging Riak server', 'ext.riiak.Riiak');
+        $response = Utils::httpRequest('GET', self::buildUrl($this) . '/ping');
+        return ($response != NULL) && ($response['body'] == 'OK');
     }
 
     /**
