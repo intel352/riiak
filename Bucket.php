@@ -283,7 +283,8 @@ class Bucket extends CComponent {
          * Run the request
          */
         Yii::trace('Setting Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = $this->client->_transport->put($this->client, $this, $content);
+        $headers = array('Content-Type: application/json');
+        $response = $this->client->_transport->put($this->client, $this, $headers, $content);
 
         /**
          * Handle the response

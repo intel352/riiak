@@ -278,8 +278,9 @@ class MapReduce extends CComponent {
          * Execute the request
          */
         Yii::trace('Running Map/Reduce query', 'ext.riiak.MapReduce');
-        $url = Utils::buildUrl($this->client) . '/' . $this->client->mapredPrefix;
-        $response = Utils::httpRequest($this->client, 'POST', $url, array(), $content);
+        
+        $url = $this->client->_transport->buildUrl($this->client) . '/' . $this->client->mapredPrefix;
+        $response = $this->client->_transport->post($this->client, $url, array(), $content);
         $result = CJSON::decode($response['body']);
 
         /**

@@ -215,7 +215,7 @@ class Object extends CComponent {
          * Construct the URL
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
-        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $url = $this->client->_transport->buildRestPath($this->client, $this->bucket, $this->key, null, $params);
 
         /**
          * Construct the headers
@@ -242,13 +242,15 @@ class Object extends CComponent {
             $content = $this->_data;
 
         $method = $this->key ? 'PUT' : 'POST';
-
         /**
          * Run the operation
          */
         Yii::trace('Storing object "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = Utils::httpRequest($this->client, $method, $url, $headers, $content);
-
+        if($this->key){
+            $response = $this->client->_transport->put($this->client, $this->bucket, $headers, $content, $url);
+        }else{
+            $response = $this->client->_transport->post($this->client, $url, $headers, $content);
+        }
         $this->populate($response, array(200, 201, 300));
         return $this;
     }

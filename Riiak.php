@@ -121,6 +121,9 @@ class Riiak extends CApplicationComponent {
      */
     public $_TLProtocol = 'http';
     
+    /**
+     * Initialise Riiak
+     */
     public function init() {
         parent::init();
         /**
@@ -136,6 +139,7 @@ class Riiak extends CApplicationComponent {
              * Create transport layer object.
              */
             $this->_transport = $this->createTLObject($this->_TLProtocol);
+            $this->_transport->setClient($this);
         }
     }
     
@@ -151,7 +155,7 @@ class Riiak extends CApplicationComponent {
                 /**
                  * HTTP Transport layer class object.
                  */
-                return new transport\http\Transport();
+                return new transport\http\HttpTransport();
                 break;
             case 'PBC':
                 /**
@@ -162,7 +166,7 @@ class Riiak extends CApplicationComponent {
                 /**
                  * Default: HTTP Transport layer class object.
                  */
-                return new transport\http\Transport();
+                return new transport\http\HttpTransport();
                 break;
         }
     }
@@ -183,13 +187,9 @@ class Riiak extends CApplicationComponent {
      * @return array
      */
     public function buckets() {
-         Yii::trace('Fetching list of buckets', 'ext.riiak.Riiak');
-        $response = Utils::httpRequest($this->client, 'GET', Utils::buildRestPath($this) . '?buckets=true');
-        $responseObj = CJSON::decode($response['body']);
+        Yii::trace('Fetching list of buckets', 'ext.riiak.Riiak');
         $buckets = array();
-        foreach ($responseObj->buckets as $name)
-            $buckets[] = $this->bucket($name);
-        
+        $buckets = $this->_transport->getBuckets($this);
         return $buckets; 
     }
 
@@ -200,8 +200,7 @@ class Riiak extends CApplicationComponent {
      */
     public function getIsAlive() {
         Yii::trace('Pinging Riak server', 'ext.riiak.Riiak');
-        $response = Utils::httpRequest('GET', self::buildUrl($this) . '/ping');
-        return ($response != NULL) && ($response['body'] == 'OK');
+        return $this->_transport->getBuckets($this);
     }
 
     /**
