@@ -11,8 +11,8 @@ use \CComponent,
  * Contains transport layer actions of Riak
  * @package http
  */
-class Curl extends CComponent {
-    
+class Curl extends \riiak\transport\Http {
+
     /**
      * Builds a CURL URL to access Riak API
      *
@@ -48,7 +48,7 @@ class Curl extends CComponent {
 
         return $curlOptions;
     }
-    
+
     /**
      * Builds curl options array
      *
@@ -62,7 +62,7 @@ class Curl extends CComponent {
                             return $curlOpts[$const];
                         }, $curlConstants);
     }
-    
+
     /**
      * Method to process HTTP request using CURL.
      * 
@@ -73,7 +73,7 @@ class Curl extends CComponent {
      * @param object $obj
      * @return array 
      */
-    public function processRequest(\riiak\Riiak $client, $method, $url, array $requestHeaders = array(), $obj = ''){
+    public function processRequest(\riiak\Riiak $client, $method, $url, array $requestHeaders = array(), $obj = '') {
         /**
          * Init curl
          */
@@ -82,7 +82,7 @@ class Curl extends CComponent {
 
         if ($client->enableProfiling)
             $profileToken = 'ext.Transport.Curl.httpRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
-        
+
         /**
          * Capture response headers
          */
@@ -115,42 +115,40 @@ class Curl extends CComponent {
 
             if ($client->enableProfiling)
                 Yii::endProfile($profileToken, 'ext.Transport.Curl.httpRequest');
-            
+
             /**
              * Prepare curl response
              */
-            $responseData = array('http_code'=>$httpCode, 'headerData'=>$responseHeadersIO, 'body'=>$responseBodyIO);
+            $responseData = array('http_code' => $httpCode, 'headerData' => $responseHeadersIO, 'body' => $responseBodyIO);
             /**
              * Return curl response.
              */
             return $responseData;
-            
         } catch (Exception $e) {
             curl_close($ch);
             error_log('Error: ' . $e->getMessage());
             return NULL;
         }
-
     }
-    
+
     /**
-    * Method to remove bulk of empty keys from riak response.
-    * 
-    * @param array $response
-    * @param array $params
-    * @return String  List of keys in JSON format.
-    */
-   public function getStreamedBucketKeys(array $response, array $params){
-       /**
-        * Check if keys!=stream then return same response body.
-        */
-        if(!array_key_exists('keys', $params) || $params['keys'] != 'stream')
+     * Method to remove bulk of empty keys from riak response.
+     * 
+     * @param array $response
+     * @param array $params
+     * @return String  List of keys in JSON format.
+     */
+    public function getStreamedBucketKeys(array $response, array $params) {
+        /**
+         * Check if keys!=stream then return same response body.
+         */
+        if (!array_key_exists('keys', $params) || $params['keys'] != 'stream')
             return $response['body'];
-       /**
-        * Replace all blank array keys.
-        */
+        /**
+         * Replace all blank array keys.
+         */
         $response['body'] = str_replace('{"keys":[]}', '', $response['body']);
-        
+
         /**
          * Declare required variables
          */
@@ -163,29 +161,30 @@ class Curl extends CComponent {
          *  Input string is {"keys":[]}{"keys":["admin"]}{"keys":[]}{"keys":["test"]} etc. 
          *  then output wiil be {"keys":[]},{"keys":["admin"]},{"keys":[]},{"keys":["test"]}
          */
-        $arrInput = explode('#,#', str_replace('}{','}#,#{', $response['body']));
+        $arrInput = explode('#,#', str_replace('}{', '}#,#{', $response['body']));
         /**
          * Prepare loop to process input array.
          */
-        foreach($arrInput as $index => $value){
-           /**
-            *  Decode input string '"keys":["admin"]' into array.
-            */
-           $data = (array)CJSON::decode($value);
-           
-           /**
-            *  Check for keys count is greate than 0.
-            */
-           if( array_key_exists('keys', $data) && 1 < count($data['keys'])){
-               $strKeys .= implode('#,#', $data['keys']) . '#,#';
-           }else if(array_key_exists('keys', $data) && 0 < count($data['keys'])){
-               $strKeys .= $data['keys'][0] . '#,#';
-           }
+        foreach ($arrInput as $index => $value) {
+            /**
+             *  Decode input string '"keys":["admin"]' into array.
+             */
+            $data = (array) CJSON::decode($value);
+
+            /**
+             *  Check for keys count is greate than 0.
+             */
+            if (array_key_exists('keys', $data) && 1 < count($data['keys'])) {
+                $strKeys .= implode('#,#', $data['keys']) . '#,#';
+            } else if (array_key_exists('keys', $data) && 0 < count($data['keys'])) {
+                $strKeys .= $data['keys'][0] . '#,#';
+            }
         }
         /**
          * Return list of keys as JSON string.
          */
         $arrOutput["keys"] = explode('#,#', substr($strKeys, 0, strlen($strKeys) - 3));
         return CJSON::encode($arrOutput);
-   }
+    }
+
 }

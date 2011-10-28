@@ -1,36 +1,34 @@
 <?php
 
-namespace riiak\transport\http;
+namespace riiak\transport;
 
-use \CComponent,
-    \CJSON,
+use \CJSON,
     \Exception,
     \Yii;
 
 /**
  * Contains transport layer actions of Riak
- * @package http
+ * @package riiak.transport
  */
-class HttpTransport extends \riiak\transport\Transport {
-    
-   /**
+class Http extends \riiak\Transport {
+
+    /**
      * Builds URL to connect to Riak server
      *
-     * @param object $objClient
      * @return string
      */
-    public function buildUrl(\riiak\Riiak $objClient) {
-        return 'http' . ($objClient->ssl ? 's' : '') . '://' . $objClient->host . ':' . $objClient->port;
+    public function buildUrl() {
+        return 'http' . ($this->client->ssl ? 's' : '') . '://' . $this->client->host . ':' . $this->client->port;
     }
-    
+
     /**
      * Return processing method object either CURL, PHP stream or fopen.
      * 
      * @param string $strMethod
      * @return object  
      */
-    protected function getProcessingObject($strMethod = NULL){
-        switch($strMethod){
+    protected function getProcessingObject($strMethod = NULL) {
+        switch ($strMethod) {
             case 'Curl':
                 /**
                  * Return CURL as processing method object.
@@ -47,85 +45,84 @@ class HttpTransport extends \riiak\transport\Transport {
                 break;
         }
     }
+
     /**
-     * Method to fetch bucket properties.
+     * Get (fetch) an object
      * 
-     * @param \riiak\Riiak $objClient
+     * @param \riiak\Bucket $objBucket
      * @param array $params
      * @param string $key
      * @param string $spec
      * @return array 
      */
-    public function get(\riiak\Riiak $objClient, \riiak\Bucket $objBucket = NULL, array $params = array(), $key = null, $spec = null){
+    public function get(\riiak\Bucket $objBucket = NULL, array $params = array(), $key = null, $spec = null) {
         /**
          * Construct the URL
          */
-        $url = $this->buildRestPath($objClient, $objBucket, $key, $spec, $params);
-        
+        $url = $this->buildRestPath($objBucket, $key, $spec, $params);
+
         Yii::trace('Fetching transport layer Bucket properties for bucket "' . $objBucket->name . '"', 'ext.transport.httpRequest');
-        
+
         /**
          * Process request.
          */
-        $response = $this->processRequest($objClient, 'GET', $url);
-        
+        $response = $this->processRequest('GET', $url);
+
         /**
          * Remove bulk of empty keys.
          */
         $response['body'] = $this->_objProcessMethod->getStreamedBucketKeys($response, $params);
-        
-        /**
-         * Return response
-         */
-        return $response;
-     }
-     
-    /**
-     * Method to set multiple bucket properties in one call.
-     * 
-     * @param \riiak\Riiak $objClient
-     * @param \riiak\Bucket $objBucket
-     * @param string $content
-     * @param string $headers
-     * @return array $response
-     */
-    public function put(\riiak\Riiak $objClient, \riiak\Bucket $objBucket = NULL, $headers = NULL, $contents = '', $url = ''){
-        /**
-         * Construct the request URL.
-         */
-        if($url == '')
-        $url = $this->buildRestPath($objClient, $objBucket);
-        
-        /**
-         * Prepare response header
-         */
-        
-        Yii::trace('Setting transport layer Bucket properties for bucket "' . $objBucket->name . '"', 'ext.transport.httpRequest');
-        /**
-         * Process request.
-         */
-        $response = $this->processRequest($objClient, 'PUT', $url, $headers, $contents);
-        /**
-         * Set status code
-         */
-        $response['statusCode'] = $response['headers']['http_code'];
+
         /**
          * Return response
          */
         return $response;
     }
-    
+
+    /**
+     * Put (save) an object
+     * 
+     * @param \riiak\Bucket $objBucket
+     * @param string $contents
+     * @param string $headers
+     * @return array $response
+     */
+    public function put(\riiak\Bucket $objBucket = NULL, $headers = NULL, $contents = '', $url = '') {
+        /**
+         * Construct the request URL.
+         */
+        if ($url == '')
+            $url = $this->buildRestPath($objBucket);
+
+        /**
+         * Prepare response header
+         */
+        /**
+         * Process request.
+         */
+        $response = $this->processRequest('PUT', $url, $headers, $contents);
+
+        /**
+         * Set status code
+         */
+        $response['statusCode'] = $response['headers']['http_code'];
+
+        /**
+         * Return response
+         */
+        return $response;
+    }
+
     /**
      * Builds a REST URL to access Riak API
      *
-     * @param object $objClient
-     * @param object $objBucket
+     * @param \riiak\Bucket $objBucket
      * @param string $key
      * @param string $spec
      * @param array $params
      * @return string
      */
-    public function buildRestPath(\riiak\Riiak $objClient, \riiak\Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL) {
+    public function buildRestPath(\riiak\Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL) {
         /**
          * Build http[s]://hostname:port/prefix[/bucket]
          */
@@ -133,13 +130,13 @@ class HttpTransport extends \riiak\transport\Transport {
         /**
          * Check for get bucket keys using keys=stream.
          */
-        if(!is_null($params) && 0 < count($params) && array_key_exists('keys', $params) && $params['keys'] != 'false'){
-            $path = $this->buildUrl($objClient) . '/' . $objClient->bucketPrefix;
-            $streamKey = '/' . $objClient->keyPrefix;
-        }else{
-            $path = $this->buildUrl($objClient) . '/' . $objClient->prefix;
+        if (!is_null($params) && 0 < count($params) && array_key_exists('keys', $params) && $params['keys'] != 'false') {
+            $path = $this->buildUrl() . '/' . $this->client->bucketPrefix;
+            $streamKey = '/' . $this->client->keyPrefix;
+        } else {
+            $path = $this->buildUrl() . '/' . $this->client->prefix;
         }
-        
+
         /**
          * Add bucket
          */
@@ -168,24 +165,23 @@ class HttpTransport extends \riiak\transport\Transport {
 
         return $path;
     }
-    
+
     /**
      * Executes HTTP request, returns named array(headers, body) of request, or null on error
      *
-     * @param object $client
      * @param string $method GET|POST|PUT|DELETE
      * @param string $url
      * @param array $requestHeaders
      * @param string $obj
      * @return array|null
      */
-    public function processRequest(\riiak\Riiak $client, $method, $url, array $requestHeaders = array(), $obj = '') {
-        try{
+    public function processRequest($method, $url, array $requestHeaders = array(), $obj = '') {
+        try {
             /**
              * Process http request using processing method (Curl,fopen etc).
              */
-            $responseData = $this->_objProcessMethod->processRequest($client, $method, $url, $requestHeaders, $obj);
-            
+            $responseData = $this->_objProcessMethod->processRequest($method, $url, $requestHeaders, $obj);
+
             /**
              * Get headers
              */
@@ -196,12 +192,12 @@ class HttpTransport extends \riiak\transport\Transport {
              * Return headers/body array
              */
             return array('headers' => $responseHeaders, 'body' => $responseData['body']);
-        }catch (Exception $e) {
+        } catch (Exception $e) {
             error_log('Error: ' . $e->getMessage());
             return NULL;
         }
     }
-    
+
     /**
      * Parse HTTP header string into an assoc array
      *
@@ -223,64 +219,58 @@ class HttpTransport extends \riiak\transport\Transport {
         }
         return $retVal;
     }
-    
+
     /**
      * Check if Riak server is alive
      *
      * @return bool
      */
-    public function getIsAlive(\riiak\Riiak $objClient) {
+    public function getIsAlive() {
         Yii::trace('Pinging Riak server', 'ext.transport.http');
-        $response = $this->processRequest('GET', $this->buildUrl($objClient) . '/ping');
+        $response = $this->processRequest('GET', $this->buildUrl() . '/ping');
         return ($response != NULL) && ($response['body'] == 'OK');
     }
-    
+
     /**
      * Return array of Bucket objects
      *
      * @return array
      */
-    public function getBuckets(\riiak\Riiak $objClient) {
+    public function getBuckets() {
         Yii::trace('Fetching list of buckets', 'ext.transport.http');
         /**
          * Construct URL
          */
-        $url = $this->buildRestPath($objClient) . '?buckets=true';
+        $url = $this->buildRestPath() . '?buckets=true';
         /**
          * Send request to fetch buckets.
          */
-        $response = $this->processRequest($this->_client, 'GET', $url);
-        $responseObj = (array)CJSON::decode($response['body']);
+        $response = $this->processRequest('GET', $url);
+        $responseObj = (array) CJSON::decode($response['body']);
         $buckets = array();
         /**
          * Prepare loop to process bucket list.
          */
         foreach ($responseObj['buckets'] as $name)
-            $buckets[] = $this->_client->bucket($name);
+            $buckets[] = $this->client->bucket($name);
         /**
          * Return bucket array.
          */
-        return $buckets; 
+        return $buckets;
     }
-    
+
     /**
-     * Method to set multiple bucket properties in one call.
-     * 
-     * @param \riiak\Riiak $objClient
-     * @param \riiak\Bucket $objBucket
      * @param array $params
      * @return array $response
      */
-    public function post(\riiak\Riiak $objClient, $url = NULL, array $params = array(), $headers = ''){
+    public function post($url = NULL, array $params = array(), $headers = '') {
         /**
          * Prepare response header
          */
-        Yii::trace('Store the object in Riak ', 'ext.transport.http');
-        
         /**
          * Process request.
          */
-        $response = $this->processRequest($objClient, 'POST', $url, $params, $headers);
+        $response = $this->processRequest($this->client, 'POST', $url, $params, $headers);
         /**
          * Set status code
          */
@@ -290,4 +280,5 @@ class HttpTransport extends \riiak\transport\Transport {
          */
         return $response;
     }
+
 }

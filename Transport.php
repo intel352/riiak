@@ -1,6 +1,6 @@
 <?php
 
-namespace riiak\transport;
+namespace riiak;
 
 use \CComponent,
     \CJSON,
@@ -9,79 +9,74 @@ use \CComponent,
 
 /**
  * Contains transport layer actions of Riak
- * @package http
+ * @package riiak
  */
 abstract class Transport extends CComponent {
+
     /**
      * Request processing method
      * 
      * @var string Default:Curl
      */
     private $_processMethod = 'Curl';
-    
+
     /**
-     * Riiak object
+     * Riiak client
      * 
-     * @var object
+     * @var \riiak\Riiak
      */
-    public $_client;
-    
+    public $client;
+
     /**
      * Object of processing method
      * 
      * @var object 
      */
     public $_objProcessMethod;
-    
+
     /**
      * Initialise processing method object.
      */
-    public function __construct(){
+    public function __construct(Riiak $client) {
+        $this->client = $client;
         /**
-         * Check whether processing method object is exits or not.
+         * Check whether processing method object exists or not.
          */
-        if(!is_object($this->_objProcessMethod)){
+        if (!is_object($this->_objProcessMethod)) {
             $this->_objProcessMethod = $this->getProcessingObject();
         }
     }
-    
-    /**
-     * Method to set Riiak object
-     * @param \riiak\Riiak $objRiiak 
-     */
-    public function setClient(\riiak\Riiak $objRiiak){
-        $this->_client = $objRiiak;
-    }
+
     /**
      * Builds URL to connect to Riak server
      *
-     * @param object $objClient
      * @return string
      */
-    abstract public function buildUrl(\riiak\Riiak $objClient);
-    
+    abstract public function buildUrl();
+
     /**
      * Return array of Bucket objects
      *
      * @return array
      */
-    abstract public function getBuckets(\riiak\Riiak $objClient);
-    
+    abstract public function getBuckets();
+
     /**
      * Check if Riak server is alive
      *
      * @return bool
      */
-    abstract public function getIsAlive(\riiak\Riiak $objClient);
-    
+    abstract public function getIsAlive();
+
     /**
      * Return processing method object either CURL, PHP stream or fopen.
      * 
      * @param string $strMethod
      * @return object  
      */
-    protected function getProcessingObject($strMethod = NULL){
-        switch($strMethod){
+    protected function getProcessingObject($strMethod = NULL) {
+        switch ($strMethod) {
+            default:
             case 'Curl':
                 /**
                  * Return CURL as processing method object.
@@ -90,60 +85,71 @@ abstract class Transport extends CComponent {
                 break;
             case 'fopen':
                 break;
-            default:
-                /**
-                 * Default: return CURL as request processing method.
-                 */
-                return new http\Curl();
-                break;
         }
     }
-    
+
     /**
-     * Method to fetch bucket properties.
+     * Get (fetch) an object
      * 
-     * @param \riiak\Riiak $objClient
+     * @param \riiak\Bucket $objBucket
      * @param array $params
      * @param string $key
      * @param string $spec
      * @return array 
      */
-    abstract public function get(\riiak\Riiak $objClient, \riiak\Bucket $objBucket = NULL, array $params = array(), $key = null, $spec = null);
-    
+    abstract public function get(Bucket $objBucket = NULL, array $params = array(), $key = null, $spec = null);
+
     /**
-     * Method to set multiple bucket properties in one call.
+     * Put (save) an object
      * 
-     * @param \riiak\Riiak $objClient
      * @param \riiak\Bucket $objBucket
      * @param array $params
      * @return array $response
      */
-    abstract public function put(\riiak\Riiak $objClient, \riiak\Bucket $objBucket = NULL, $headers = NULL, $contents = '' );
-    
+    abstract public function put(Bucket $objBucket = NULL, $headers = NULL, $contents = '');
+
+    /**
+     * Method to store object in Riak.
+     * 
+     * @param string $url
+     * @param array $params
+     * @param string $headers
+     * @return array 
+     */
+    abstract public function post($url = NULL, array $params = array(), $headers = '');
+
+    /**
+     * Method to delete object in Riak.
+     * 
+     * @param string $url
+     * @param array $params
+     * @param string $headers
+     * @return array 
+     */
+    abstract public function delete($url = NULL, array $params = array(), $headers = '');
+
     /**
      * Builds a REST URL to access Riak API
      *
-     * @param object $objClient
      * @param object $objBucket
      * @param string $key
      * @param string $spec
      * @param array $params
      * @return string
      */
-    abstract public function buildRestPath(\riiak\Riiak $objClient, \riiak\Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL);
-    
+    abstract public function buildRestPath(Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL);
+
     /**
      * Executes request, returns named array(headers, body) of request, or null on error
      *
-     * @param object $client
      * @param string $method GET|POST|PUT|DELETE
      * @param string $url
      * @param array $requestHeaders
      * @param string $obj
      * @return array|null
      */
-    abstract public function processRequest(\riiak\Riiak $client, $method, $url, array $requestHeaders = array(), $obj = '');
-    
+    abstract public function processRequest($method, $url, array $requestHeaders = array(), $obj = '');
+
     /**
      * Parse HTTP header string into an assoc array
      *
@@ -151,15 +157,4 @@ abstract class Transport extends CComponent {
      * @return array
      */
     abstract public static function parseHttpHeaders($headers);
-    
-    /**
-     * Method to store object in Riak.
-     * 
-     * @param \riiak\Riiak $objClient
-     * @param string $url
-     * @param array $params
-     * @param string $headers
-     * @return array 
-     */
-    abstract public function post(\riiak\Riiak $objClient, $url = NULL, array $params = array(), $headers = '');
 }
