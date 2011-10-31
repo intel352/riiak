@@ -284,7 +284,7 @@ class Bucket extends CComponent {
          */
         Yii::trace('Setting Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
         $headers = array('Content-Type: application/json');
-        $response = $this->client->_transport->put($this->client, $this, $headers, $content);
+        $response = $this->client->_transport->put($this, $headers, $content);
 
         /**
          * Handle the response
@@ -341,7 +341,7 @@ class Bucket extends CComponent {
          * Run the request
          */
         Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = $this->client->_transport->get($this->client, $this, $params, $key, $spec);
+        $response = $this->client->_transport->get($this, $params, $key, $spec);
         
         /**
          * Use a Object to interpret the response, we are just interested in the value

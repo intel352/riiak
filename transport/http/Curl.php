@@ -11,7 +11,21 @@ use \CComponent,
  * Contains transport layer actions of Riak
  * @package http
  */
-class Curl extends \riiak\transport\Http {
+class Curl extends CComponent {
+    /**
+     * Riiak client
+     * 
+     * @var \riiak\Riiak
+     */
+    private $client;
+    
+    /**
+     * Initialise processing method object.
+     * @param object $objClient
+     */
+    public function __construct(\riiak\Riiak $objClient){
+        $this->client = $objClient;
+    }
 
     /**
      * Builds a CURL URL to access Riak API
@@ -73,14 +87,14 @@ class Curl extends \riiak\transport\Http {
      * @param object $obj
      * @return array 
      */
-    public function processRequest(\riiak\Riiak $client, $method, $url, array $requestHeaders = array(), $obj = '') {
+    public function processRequest($method, $url, array $requestHeaders = array(), $obj = '') {
         /**
          * Init curl
          */
         $ch = curl_init();
         $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $obj);
 
-        if ($client->enableProfiling)
+        if ($this->client->enableProfiling)
             $profileToken = 'ext.Transport.Curl.httpRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
         /**
@@ -103,7 +117,7 @@ class Curl extends \riiak\transport\Http {
 
         curl_setopt_array($ch, $curlOpts);
         try {
-            if ($client->enableProfiling)
+            if ($this->client->enableProfiling)
                 Yii::beginProfile($profileToken, 'ext.Transport.Curl.httpRequest');
 
             /**
@@ -113,7 +127,7 @@ class Curl extends \riiak\transport\Http {
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
 
-            if ($client->enableProfiling)
+            if ($this->client->enableProfiling)
                 Yii::endProfile($profileToken, 'ext.Transport.Curl.httpRequest');
 
             /**
@@ -129,6 +143,123 @@ class Curl extends \riiak\transport\Http {
             error_log('Error: ' . $e->getMessage());
             return NULL;
         }
+    }
+    /**
+     * Parse HTTP header string into an assoc array
+     * @param array $headers 
+     */
+    public function processHeaders($headers) {
+        $retVal = array();
+        $fields = array_filter(explode("\r\n", preg_replace('/\x0D\x0A[\x09\x20]+/', ' ', $headers)));
+        foreach ($fields as $field) {
+            if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
+                $match[1] = preg_replace('/(?<=^|[\x09\x20\x2D])./e', 'strtoupper("\0")', strtolower(trim($match[1])));
+                if (isset($retVal[$match[1]])) {
+                    $retVal[$match[1]] = array($retVal[$match[1]], $match[2]);
+                } else {
+                    $retVal[$match[1]] = trim($match[2]);
+                }
+            }
+        }
+        return $retVal;
+    }
+    
+    public function multiGet(array $urls, array $requestHeaders = array(), $obj = '') {
+        /**
+         * Init multi-curl
+         */
+        $mh = curl_multi_init();
+        $curlOpts = $this->buildCurlOpts('GET', '', $requestHeaders, $obj);
+
+        Yii::trace('Executing HTTP Multi ' . $method . ': ' . \CVarDumper::dumpAsString($urls) . ($obj ? ' with content "' . $obj . '"' : ''), 'ext.Transport.Http.Curl');
+        if ($this->client->enableProfiling)
+            $profileToken = 'ext.Transport.Curl.httpMultiGet(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
+
+        $instanceMap = array();
+        $responses = array_map(function($url)use(&$mh, $curlOpts, &$instanceMap) {
+                    $instanceMap[$url] = (int) $ch = curl_init();
+
+                    /**
+                     * Override the URL specified in the options array
+                     */
+                    $curlOpts[CURLOPT_URL] = $url;
+
+                    /**
+                     * Capture response headers
+                     */
+                    $curlOpts[CURLOPT_HEADERFUNCTION] =
+                            function($ch, $data) use(&$responseHeadersIO) {
+                                $responseHeadersIO.=$data;
+                                return strlen($data);
+                            };
+
+                    /**
+                     * Capture response body
+                     */
+                    $curlOpts[CURLOPT_WRITEFUNCTION] =
+                            function($ch, $data) use(&$responseBodyIO) {
+                                $responseBodyIO.=$data;
+                                return strlen($data);
+                            };
+
+                    curl_setopt_array($ch, $curlOpts);
+                    curl_multi_add_handle($mh, $ch);
+
+                    return array('instanceId' => (int) $ch, 'responseHeadersIO' => &$responseHeadersIO, 'responseBodyIO' => &$responseBodyIO);
+                }, array_combine($urls, $urls));
+
+        if ($this->client->enableProfiling)
+            Yii::beginProfile($profileToken, 'ext.Transport.Curl.httpMultiGet');
+
+        do {
+            $status = curl_multi_exec($mh, $active);
+        } while ($status === CURLM_CALL_MULTI_PERFORM);
+
+        $results = array();
+        while ($active && $status === CURLM_OK) {
+            if (curl_multi_select($mh) != -1) {
+                do {
+                    $status = curl_multi_exec($mh, $active);
+                } while ($status === CURLM_CALL_MULTI_PERFORM);
+
+                /**
+                 * If a request finished
+                 */
+                if (($mhinfo = curl_multi_info_read($mh))) {
+                    $ch = $mhinfo['handle'];
+                    /**
+                     * Find which URL this response belongs to
+                     */
+                    $url = array_search((int) $ch, $instanceMap);
+
+                    try {
+                        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+                        /**
+                         * Get headers
+                         */
+                        $parsedHeaders = $this->processHeaders($responses[$url]['responseHeadersIO']);
+                        $responseHeaders = array_merge(array('http_code' => $httpCode), array_change_key_case($parsedHeaders, CASE_LOWER));
+
+                        /**
+                         * Return headers/body array
+                         */
+                        $results[$url] = array('headers' => $responseHeaders, 'body' => $responses[$url]['responseBodyIO']);
+                    } catch (Exception $e) {
+                        error_log('Error: ' . $e->getMessage());
+                        $results[$url] = null;
+                    }
+                    curl_multi_remove_handle($mh, $ch);
+                    curl_close($ch);
+                }
+            }
+        }
+
+        if ($this->client->enableProfiling)
+            Yii::endProfile($profileToken, 'ext.Transport.Curl.httpMultiGet');
+
+        curl_multi_close($mh);
+        return $results;
     }
 
     /**

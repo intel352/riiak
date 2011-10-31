@@ -33,7 +33,7 @@ class Http extends \riiak\Transport {
                 /**
                  * Return CURL as processing method object.
                  */
-                return new Curl();
+                return new http\Curl($this->client);
                 break;
             case 'fopen':
                 break;
@@ -41,7 +41,7 @@ class Http extends \riiak\Transport {
                 /**
                  * Default: return CURL as request processing method.
                  */
-                return new Curl();
+                return new http\Curl($this->client);
                 break;
         }
     }
@@ -185,7 +185,7 @@ class Http extends \riiak\Transport {
             /**
              * Get headers
              */
-            $parsedHeaders = self::parseHttpHeaders($responseData['headerData']);
+            $parsedHeaders = $this->processHeaders($responseData['headerData']);
             $responseHeaders = array_merge(array('http_code' => $responseData['http_code']), array_change_key_case($parsedHeaders, CASE_LOWER));
 
             /**
@@ -204,19 +204,9 @@ class Http extends \riiak\Transport {
      * @param string $headers
      * @return array
      */
-    public static function parseHttpHeaders($headers) {
+    public function processHeaders($headers) {
         $retVal = array();
-        $fields = array_filter(explode("\r\n", preg_replace('/\x0D\x0A[\x09\x20]+/', ' ', $headers)));
-        foreach ($fields as $field) {
-            if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
-                $match[1] = preg_replace('/(?<=^|[\x09\x20\x2D])./e', 'strtoupper("\0")', strtolower(trim($match[1])));
-                if (isset($retVal[$match[1]])) {
-                    $retVal[$match[1]] = array($retVal[$match[1]], $match[2]);
-                } else {
-                    $retVal[$match[1]] = trim($match[2]);
-                }
-            }
-        }
+        $retVal = $this->_objProcessMethod->processHeaders($headers);
         return $retVal;
     }
 
@@ -242,17 +232,20 @@ class Http extends \riiak\Transport {
          * Construct URL
          */
         $url = $this->buildRestPath() . '?buckets=true';
+        
         /**
          * Send request to fetch buckets.
          */
         $response = $this->processRequest('GET', $url);
         $responseObj = (array) CJSON::decode($response['body']);
         $buckets = array();
+        
         /**
          * Prepare loop to process bucket list.
          */
         foreach ($responseObj['buckets'] as $name)
             $buckets[] = $this->client->bucket($name);
+        
         /**
          * Return bucket array.
          */
@@ -265,20 +258,77 @@ class Http extends \riiak\Transport {
      */
     public function post($url = NULL, array $params = array(), $headers = '') {
         /**
-         * Prepare response header
-         */
-        /**
          * Process request.
          */
-        $response = $this->processRequest($this->client, 'POST', $url, $params, $headers);
+        $response = $this->processRequest('POST', $url, $params, $headers);
+        
         /**
          * Set status code
          */
         $response['statusCode'] = $response['headers']['http_code'];
+        
         /**
          * Return response
          */
         return $response;
     }
+    
+    /**
+     *
+     * @param string $url
+     * @param array $params
+     * @param string $headers 
+     */
+    public function delete(\riiak\Bucket $objBucket = NULL, $key = '', array $params = array(), $headers = ''){
+        /**
+         * Construct URL
+         */
+        $url = $this->buildRestPath($objBucket, $key, null, $params);
+        
+        /**
+         * Prepare response header
+         */
+        Yii::trace('Delete the object in Riak ', 'ext.transport.http');
+        
+        /**
+         * Process request.
+         */
+        $response = $this->processRequest('DELETE', $url);
+        
+        /**
+         * Set status code
+         */
+        $response['statusCode'] = $response['headers']['http_code'];
+        
+        /**
+         * Return response
+         */
+        return $response;
+    }
+    
+    /**
+     * Get (fetch) multiple objects
+     * 
+     * @param array $urls
+     * @param array $requestHeaders
+     * @param string $obj
+     * @return array 
+     */
+    public function multiGet(array $urls, array $requestHeaders = array(), $obj = '') {
+        try {
+            /**
+             * Process http request using processing method (Curl,fopen etc).
+             */
+            $responseData = $this->_objProcessMethod->multiGet($urls, $requestHeaders, $obj);
 
+            /**
+             * Return headers/body array
+             */
+            return $responseData;
+            
+        } catch (Exception $e) {
+            error_log('Error: ' . $e->getMessage());
+            return NULL;
+        }
+    }
 }

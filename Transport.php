@@ -53,6 +53,17 @@ abstract class Transport extends CComponent {
      * @return string
      */
     abstract public function buildUrl();
+    
+    /**
+     * Builds a REST URL to access Riak API
+     *
+     * @param object $objBucket
+     * @param string $key
+     * @param string $spec
+     * @param array $params
+     * @return string
+     */
+    abstract public function buildRestPath(Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL);
 
     /**
      * Return array of Bucket objects
@@ -81,7 +92,7 @@ abstract class Transport extends CComponent {
                 /**
                  * Return CURL as processing method object.
                  */
-                return new http\Curl();
+                return new http\Curl($this->client);
                 break;
             case 'fopen':
                 break;
@@ -98,6 +109,14 @@ abstract class Transport extends CComponent {
      * @return array 
      */
     abstract public function get(Bucket $objBucket = NULL, array $params = array(), $key = null, $spec = null);
+    
+    /**
+     * Get (fetch) multiple objects
+     * @param array $urls
+     * @param array $requestHeaders
+     * @param string $obj 
+     */
+    abstract public function multiGet(array $urls, array $requestHeaders = array(), $obj = '');
 
     /**
      * Put (save) an object
@@ -126,18 +145,7 @@ abstract class Transport extends CComponent {
      * @param string $headers
      * @return array 
      */
-    abstract public function delete($url = NULL, array $params = array(), $headers = '');
-
-    /**
-     * Builds a REST URL to access Riak API
-     *
-     * @param object $objBucket
-     * @param string $key
-     * @param string $spec
-     * @param array $params
-     * @return string
-     */
-    abstract public function buildRestPath(Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL);
+    abstract public function delete(Bucket $objBucket = NULL, $key = '', array $params = array(), $headers = '');
 
     /**
      * Executes request, returns named array(headers, body) of request, or null on error
@@ -151,10 +159,11 @@ abstract class Transport extends CComponent {
     abstract public function processRequest($method, $url, array $requestHeaders = array(), $obj = '');
 
     /**
-     * Parse HTTP header string into an assoc array
+     * Parse header string into an assoc array
      *
      * @param string $headers
      * @return array
      */
-    abstract public static function parseHttpHeaders($headers);
+    abstract public function processHeaders($headers);
+    
 }

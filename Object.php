@@ -247,9 +247,9 @@ class Object extends CComponent {
          */
         Yii::trace('Storing object "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
         if($this->key){
-            $response = $this->client->_transport->put($this->client, $this->bucket, $headers, $content, $url);
+            $response = $this->client->_transport->put($this->bucket, $headers, $content, $url);
         }else{
-            $response = $this->client->_transport->post($this->client, $url, $headers, $content);
+            $response = $this->client->_transport->post($url, $headers, $content);
         }
         $this->populate($response, array(200, 201, 300));
         return $this;
@@ -267,18 +267,19 @@ class Object extends CComponent {
         /**
          * Do the request
          */
-        $url = self::buildReloadUrl($this, $r);
-
+        $params = array('r' => $this->bucket->getR($r));
         Yii::trace('Reloading object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = Utils::httpRequest($this->client, 'GET', $url);
-
+        $response = $this->client->_transport->get($this->bucket, $params, $this->key, null);
         return self::populateResponse($this, $response);
     }
 
     public static function reloadMulti(Riiak $client, array $objects, $r = null) {
         Yii::trace('Reloading multiple objects', 'ext.riiak.Object');
         $objects = array_combine(array_map(array('self', 'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
-        $responses = Utils::httpMultiRequest($client, 'GET', array_keys($objects));
+        /**
+         * Get (fetch) multiple objects
+         */
+        $responses = $client->_transport->multiGet(array_keys($objects));
         array_walk($objects, function(&$object, $url)use(&$responses) {
                     Object::populateResponse($object, $responses[$url]);
                 });
@@ -287,7 +288,7 @@ class Object extends CComponent {
 
     protected static function buildReloadUrl(Object $object, $r = null) {
         $params = array('r' => $object->bucket->getR($r));
-        return Utils::buildRestPath($object->client, $object->bucket, $object->key, null, $params);
+        return $object->client->_transport->buildRestPath($object->bucket, $object->key, null, $params);
     }
 
     public static function populateResponse(Object &$object, $response) {
@@ -320,14 +321,11 @@ class Object extends CComponent {
          * Construct the URL
          */
         $params = array('dw' => $dw);
-        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-
         /**
          * Run the operation
          */
         Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = Utils::httpRequest($this->client, 'DELETE', $url);
-
+        $response = $this->client->_transport->delete($this->bucket, $this->key, $params, '' );
         $this->populate($response, array(204, 404));
 
         return $this;
@@ -362,7 +360,7 @@ class Object extends CComponent {
     /**
      * Populates the object. Only for internal use
      *
-     * @param array $response Output of Utils::httpRequest
+     * @param array $response Output of transport layer processing
      * @param array $expectedStatuses List of statuses
      * @return \riiak\Object
      */
@@ -385,7 +383,7 @@ class Object extends CComponent {
          * Check if the server is down (status==0)
          */
         if ($this->status == 0)
-            throw new Exception('Could not contact Riak Server: ' . Utils::buildUrl($this->client) . '!');
+            throw new Exception('Could not contact Riak Server: ' . $this->client->_transport->buildUrl($this->client) . '!');
 
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
@@ -487,10 +485,9 @@ class Object extends CComponent {
          */
         $vtag = $this->siblings[$i];
         $params = array('r' => $r, 'vtag' => $vtag);
-        $url = Utils::buildRestPath($this->client, $this->bucket, $this->key, null, $params);
-
+        
         Yii::trace('Fetching sibling "' . $i . '" of object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = Utils::httpRequest($this->client, 'GET', $url);
+        $response = $this->client->_transport->get($this->bucket, $params, $this->key, null);
 
         /**
          * Respond with a new object

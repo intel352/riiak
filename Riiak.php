@@ -138,24 +138,23 @@ class Riiak extends CApplicationComponent {
             /**
              * Create transport layer object.
              */
-            $this->_transport = $this->createTLObject($this->_TLProtocol);
-            $this->_transport->setClient($this);
+            $this->_transport = $this->createTLObject($this);
         }
     }
     
     /**
      * Method to create transport layer object as per the protocol.
      * 
-     * @param String $strProtocol
+     * @param object $objClient
      * @return Object Transport Layer object
      */
-    public static function createTLObject($strProtocol){
-        switch($strProtocol){
+    public static function createTLObject(Riiak $objClient){
+        switch($objClient->_TLProtocol){
             case 'http':
                 /**
                  * HTTP Transport layer class object.
                  */
-                return new transport\http\HttpTransport();
+                return new \riiak\transport\http($objClient);
                 break;
             case 'PBC':
                 /**
@@ -166,7 +165,7 @@ class Riiak extends CApplicationComponent {
                 /**
                  * Default: HTTP Transport layer class object.
                  */
-                return new transport\http\HttpTransport();
+                return new \riiak\transport\http($objClient);
                 break;
         }
     }
