@@ -19,6 +19,14 @@ abstract class Transport extends CComponent {
      * @var \riiak\Riiak
      */
     public $client;
+    
+    /**
+     * Initialise processing method object.
+     * @param object $objClient
+     */
+    public function __construct(\riiak\Riiak $objClient){
+        $this->client = $objClient;
+    }
 
     /**
      * Builds URL to connect to Riak server

@@ -14,14 +14,6 @@ use \CComponent,
 class Curl extends \riiak\transport\Http{
     
     /**
-     * Initialise processing method object.
-     * @param object $objClient
-     */
-    public function __construct(\riiak\Riiak $objClient){
-        $this->client = $objClient;
-    }
-
-    /**
      * Builds a CURL URL to access Riak API
      *
      * @param string $method
