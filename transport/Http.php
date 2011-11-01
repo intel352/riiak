@@ -10,7 +10,7 @@ use \CJSON,
  * Contains transport layer actions of Riak
  * @package riiak.transport
  */
-class Http extends \riiak\Transport {
+abstract class Http extends \riiak\Transport{
 
     /**
      * Builds URL to connect to Riak server
@@ -19,31 +19,6 @@ class Http extends \riiak\Transport {
      */
     public function buildUrl() {
         return 'http' . ($this->client->ssl ? 's' : '') . '://' . $this->client->host . ':' . $this->client->port;
-    }
-
-    /**
-     * Return processing method object either CURL, PHP stream or fopen.
-     * 
-     * @param string $strMethod
-     * @return object  
-     */
-    protected function getProcessingObject($strMethod = NULL) {
-        switch ($strMethod) {
-            case 'Curl':
-                /**
-                 * Return CURL as processing method object.
-                 */
-                return new http\Curl($this->client);
-                break;
-            case 'fopen':
-                break;
-            default:
-                /**
-                 * Default: return CURL as request processing method.
-                 */
-                return new http\Curl($this->client);
-                break;
-        }
     }
 
     /**
@@ -60,7 +35,6 @@ class Http extends \riiak\Transport {
          * Construct the URL
          */
         $url = $this->buildRestPath($objBucket, $key, $spec, $params);
-
         Yii::trace('Fetching transport layer Bucket properties for bucket "' . $objBucket->name . '"', 'ext.transport.httpRequest');
 
         /**
@@ -71,7 +45,7 @@ class Http extends \riiak\Transport {
         /**
          * Remove bulk of empty keys.
          */
-        $response['body'] = $this->_objProcessMethod->getStreamedBucketKeys($response, $params);
+        $response['body'] = $this->getStreamedBucketKeys($response, $params);
 
         /**
          * Return response
@@ -180,7 +154,7 @@ class Http extends \riiak\Transport {
             /**
              * Process http request using processing method (Curl,fopen etc).
              */
-            $responseData = $this->_objProcessMethod->processRequest($method, $url, $requestHeaders, $obj);
+            $responseData = $this->sendRequest($method, $url, $requestHeaders, $obj);
 
             /**
              * Get headers
@@ -206,7 +180,7 @@ class Http extends \riiak\Transport {
      */
     public function processHeaders($headers) {
         $retVal = array();
-        $retVal = $this->_objProcessMethod->processHeaders($headers);
+        $retVal = $this->processHeaders($headers);
         return $retVal;
     }
 
@@ -319,7 +293,7 @@ class Http extends \riiak\Transport {
             /**
              * Process http request using processing method (Curl,fopen etc).
              */
-            $responseData = $this->_objProcessMethod->multiGet($urls, $requestHeaders, $obj);
+            $responseData = $this->multiGet($urls, $requestHeaders, $obj);
 
             /**
              * Return headers/body array
@@ -340,11 +314,15 @@ class Http extends \riiak\Transport {
      * @param array $expectedStatuses List of statuses
      * @return \riiak\Object
      */
-    public function populate(\riiak\Object &$objObject, \riiak\Bucket $objBucket, $response = array(), array $expectedStatuses = array()) {
-        
+    public function populate(\riiak\Object &$objObject, \riiak\Bucket $objBucket, $response = array(), array $expectedStatuses = array()){
+        /**
+         * Check for allowed response status list.
+         */
         if(0 >= count($expectedStatuses))
         $expectedStatuses = array(200, 201, 300);
-        
+        /**
+         * Check for riiak\Object class object
+         */
         if(!is_object($objObject))
             $objObject = new \riiak\Object($this->client, $objBucket);
         

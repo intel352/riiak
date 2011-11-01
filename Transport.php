@@ -14,38 +14,11 @@ use \CComponent,
 abstract class Transport extends CComponent {
 
     /**
-     * Request processing method
-     * 
-     * @var string Default:Curl
-     */
-    private $_processMethod = 'Curl';
-
-    /**
      * Riiak client
      * 
      * @var \riiak\Riiak
      */
     public $client;
-
-    /**
-     * Object of processing method
-     * 
-     * @var object 
-     */
-    public $_objProcessMethod;
-
-    /**
-     * Initialise processing method object.
-     */
-    public function __construct(Riiak $client) {
-        $this->client = $client;
-        /**
-         * Check whether processing method object exists or not.
-         */
-        if (!is_object($this->_objProcessMethod)) {
-            $this->_objProcessMethod = $this->getProcessingObject();
-        }
-    }
 
     /**
      * Builds URL to connect to Riak server
@@ -78,26 +51,6 @@ abstract class Transport extends CComponent {
      * @return bool
      */
     abstract public function getIsAlive();
-
-    /**
-     * Return processing method object either CURL, PHP stream or fopen.
-     * 
-     * @param string $strMethod
-     * @return object  
-     */
-    protected function getProcessingObject($strMethod = NULL) {
-        switch ($strMethod) {
-            default:
-            case 'Curl':
-                /**
-                 * Return CURL as processing method object.
-                 */
-                return new http\Curl($this->client);
-                break;
-            case 'fopen':
-                break;
-        }
-    }
 
     /**
      * Get (fetch) an object

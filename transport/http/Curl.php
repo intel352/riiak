@@ -11,13 +11,7 @@ use \CComponent,
  * Contains transport layer actions of Riak
  * @package http
  */
-class Curl extends CComponent {
-    /**
-     * Riiak client
-     * 
-     * @var \riiak\Riiak
-     */
-    private $client;
+class Curl extends \riiak\transport\Http{
     
     /**
      * Initialise processing method object.
@@ -87,7 +81,7 @@ class Curl extends CComponent {
      * @param object $obj
      * @return array 
      */
-    public function processRequest($method, $url, array $requestHeaders = array(), $obj = '') {
+    public function sendRequest($method, $url, array $requestHeaders = array(), $obj = '') {
         /**
          * Init curl
          */

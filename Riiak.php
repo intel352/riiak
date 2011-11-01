@@ -119,7 +119,14 @@ class Riiak extends CApplicationComponent {
      * 
      * @var string Default: http
      */
-    public $_TLProtocol = 'http';
+    public $_TLProtocol = 'HTTP';
+    
+    /**
+     * Define transport layer processing method.
+     * 
+     * @var string Default:Curl
+     */
+    public $_TLProcessingMethod = 'CURL';
     
     /**
      * Initialise Riiak
@@ -150,22 +157,26 @@ class Riiak extends CApplicationComponent {
      */
     public static function createTLObject(Riiak $objClient){
         switch($objClient->_TLProtocol){
-            case 'http':
+            default:
+            case 'HTTP':
                 /**
-                 * HTTP Transport layer class object.
+                 * Get processing method object for HTTP protocol.
                  */
-                return new \riiak\transport\http($objClient);
+                switch($objClient->_TLProcessingMethod){
+                    default:
+                    case 'CURL':
+                         return new \riiak\transport\http\Curl($objClient);
+                        break;
+                    case 'FOPEN':
+                        break;
+                    case 'PHPSTREAM':
+                        break;
+                }
                 break;
             case 'PBC':
                 /**
                  * Protocol Buffer Transport layer class object.
                  */
-                break;
-            default:
-                /**
-                 * Default: HTTP Transport layer class object.
-                 */
-                return new \riiak\transport\http($objClient);
                 break;
         }
     }
