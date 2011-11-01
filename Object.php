@@ -53,7 +53,7 @@ class Object extends CComponent {
      *
      * @var array
      */
-    protected $_links = array();
+    public $_links = array();
     public $siblings = null;
 
     /**
@@ -61,7 +61,7 @@ class Object extends CComponent {
      *
      * @var bool
      */
-    protected $_exists = false;
+    public $_exists = false;
 
     /**
      * If constructed by newBinary|getBinary, returns string.
@@ -69,7 +69,7 @@ class Object extends CComponent {
      *
      * @var mixed
      */
-    protected $_data;
+    public $_data;
 
     /**
      * Construct a new Object
@@ -251,7 +251,7 @@ class Object extends CComponent {
         }else{
             $response = $this->client->_transport->post($url, $headers, $content);
         }
-        $this->populate($response, array(200, 201, 300));
+        $this->client->_transport->populate($this, $this->bucket, $response);
         return $this;
     }
 
@@ -292,7 +292,7 @@ class Object extends CComponent {
     }
 
     public static function populateResponse(Object &$object, $response) {
-        $object->populate($response, array(200, 300, 404));
+        $object->client->_transport->populate($object, $object->bucket, $response, array(200, 300, 404));
 
         /**
          * If there are siblings, load the data for the first one by default
@@ -326,7 +326,7 @@ class Object extends CComponent {
          */
         Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
         $response = $this->client->_transport->delete($this->bucket, $this->key, $params, '' );
-        $this->populate($response, array(204, 404));
+        $this->client->_transport->populate($this, $this->bucket, $response, array(204, 404));
 
         return $this;
     }
@@ -336,7 +336,7 @@ class Object extends CComponent {
      *
      * @return \riiak\Object
      */
-    private function clear() {
+    public function clear() {
         $this->headers = array();
         $this->_links = array();
         $this->_data = null;
@@ -356,91 +356,13 @@ class Object extends CComponent {
         else
             return null;
     }
-
-    /**
-     * Populates the object. Only for internal use
-     *
-     * @param array $response Output of transport layer processing
-     * @param array $expectedStatuses List of statuses
-     * @return \riiak\Object
-     */
-    public function populate($response, $expectedStatuses) {
-        $this->clear();
-
-        /**
-         * If no response given, then return
-         */
-        if ($response == null)
-            return $this;
-
-        /**
-         * Update the object
-         */
-        $this->headers = $response['headers'];
-        $this->_data = $response['body'];
-
-        /**
-         * Check if the server is down (status==0)
-         */
-        if ($this->status == 0)
-            throw new Exception('Could not contact Riak Server: ' . $this->client->_transport->buildUrl($this->client) . '!');
-
-        /**
-         * Verify that we got one of the expected statuses. Otherwise, throw an exception
-         */
-        if (!in_array($this->status, $expectedStatuses))
-            throw new Exception('Expected status ' . implode(' or ', $expectedStatuses) . ', received ' . $this->status);
-
-        /**
-         * If 404 (Not Found), then clear the object
-         */
-        if ($this->status == 404) {
-            $this->clear();
-            return $this;
-        }
-
-        /**
-         * If we are here, then the object exists
-         */
-        $this->_exists = true;
-
-        /**
-         * Parse the link header
-         */
-        if (array_key_exists('link', $this->headers))
-            $this->populateLinks($this->headers['link']);
-
-        /**
-         * If 300 (siblings), load first sibling, store the rest
-         */
-        if ($this->status == 300) {
-            $siblings = explode("\n", trim($this->_data));
-            array_shift($siblings); # Get rid of 'Siblings:' string.
-            $this->siblings = $siblings;
-            $this->_exists = true;
-            return $this;
-        }
-
-        if ($this->status == 201) {
-            $pathParts = explode('/', $this->headers['location']);
-            $this->key = array_pop($pathParts);
-        }
-
-        /**
-         * Possibly JSON decode
-         */
-        if (($this->status == 200 || $this->status == 201) && $this->jsonize)
-            $this->_data = CJSON::decode($this->_data, true);
-
-        return $this;
-    }
-
+    
     /**
      * Populate object links
      *
      * @return \riiak\Object
      */
-    private function populateLinks($linkHeaders) {
+    public function populateLinks($linkHeaders) {
         $linkHeaders = explode(',', trim($linkHeaders));
         foreach ($linkHeaders as $linkHeader)
             if (preg_match('/\<\/([^\/]+)\/([^\/]+)\/([^\/]+)\>; ?riaktag="([^"]+)"/', trim($linkHeader), $matches))
@@ -494,7 +416,7 @@ class Object extends CComponent {
          */
         $obj = new Object($this->client, $this->bucket, $this->key);
         $obj->jsonize = $this->jsonize;
-        $obj->populate($response, array(200));
+        $this->client->_transport->populate($obj, $this->bucket, $response, array(200));
         return $obj;
     }
 

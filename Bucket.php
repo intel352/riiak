@@ -342,12 +342,12 @@ class Bucket extends CComponent {
          */
         Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
         $response = $this->client->_transport->get($this, $params, $key, $spec);
-        
         /**
          * Use a Object to interpret the response, we are just interested in the value
          */
         $obj = new Object($this->client, $this);
-        $obj->populate($response, array(200));
+        $this->client->_transport->populate($obj, $this, $response, array(200));
+        
         if (!$obj->exists)
             throw new Exception('Error getting bucket properties.');
         

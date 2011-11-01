@@ -331,4 +331,90 @@ class Http extends \riiak\Transport {
             return NULL;
         }
     }
+    /**
+     * Populates the object. Only for internal use
+     *
+     * @param object $objObject
+     * @param object $objBucket
+     * @param array $response Output of transport layer processing
+     * @param array $expectedStatuses List of statuses
+     * @return \riiak\Object
+     */
+    public function populate(\riiak\Object &$objObject, \riiak\Bucket $objBucket, $response = array(), array $expectedStatuses = array()) {
+        
+        if(0 >= count($expectedStatuses))
+        $expectedStatuses = array(200, 201, 300);
+        
+        if(!is_object($objObject))
+            $objObject = new \riiak\Object($this->client, $objBucket);
+        
+        $objObject->clear();
+
+        /**
+         * If no response given, then return
+         */
+        if ($response == null)
+            return $this;
+
+        /**
+         * Update the object
+         */
+        $objObject->headers = $response['headers'];
+        $objObject->_data = $response['body'];
+
+        /**
+         * Check if the server is down (status==0)
+         */
+        if ($objObject->status == 0)
+            throw new Exception('Could not contact Riak Server: ' . $this->buildUrl($this->client) . '!');
+
+        /**
+         * Verify that we got one of the expected statuses. Otherwise, throw an exception
+         */
+        if (!in_array($objObject->status, $expectedStatuses))
+            throw new Exception('Expected status ' . implode(' or ', $expectedStatuses) . ', received ' . $objObject->status);
+
+        /**
+         * If 404 (Not Found), then clear the object
+         */
+        if ($objObject->status == 404) {
+            $objObject->clear();
+            return $objObject;
+        }
+
+        /**
+         * If we are here, then the object exists
+         */
+        $objObject->_exists = true;
+
+        /**
+         * Parse the link header
+         */
+        if (array_key_exists('link', $objObject->headers))
+            $objObject->populateLinks($objObject->headers['link']);
+
+        /**
+         * If 300 (siblings), load first sibling, store the rest
+         */
+        if ($objObject->status == 300) {
+            $siblings = explode("\n", trim($objObject->_data));
+            array_shift($siblings); # Get rid of 'Siblings:' string.
+            $objObject->siblings = $siblings;
+            $objObject->_exists = true;
+            return $objObject;
+        }
+
+        if ($objObject->status == 201) {
+            $pathParts = explode('/', $objObject->headers['location']);
+            $objObject->key = array_pop($pathParts);
+        }
+
+        /**
+         * Possibly JSON decode
+         */
+        if (($objObject->status == 200 || $objObject->status == 201) && $objObject->jsonize)
+            $objObject->_data = CJSON::decode($objObject->_data, true);
+
+        return $objObject;
+    }
 }
