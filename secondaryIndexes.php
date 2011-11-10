@@ -12,7 +12,7 @@ use \CComponent,
  * map/reduce operation on Riak.
  * @package riiak
  */
-class MapReduce extends Backend {
+class SecondaryIndexes extends Backend {
 
     /**
      * Adds object's bucket name and key will be added to m/r inputs

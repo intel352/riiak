@@ -108,6 +108,26 @@ class Riiak extends CApplicationComponent {
     protected $_mr;
     
     /**
+     *
+     * @var \riiak\SecondaryIndexes 
+     */
+    protected $_sIndex;
+    
+    /**
+     * Defines whether to use secondary index or not.
+     *  
+     * @var bool Default:false
+     */
+    public $_useSecondaryIndex = true;
+    
+    /**
+     * Riak configuration details
+     * 
+     * @var array 
+     */
+    public $_riakConfiguration;
+
+    /**
      *  Create transport layer object
      * 
      * @var object 
@@ -224,5 +244,36 @@ class Riiak extends CApplicationComponent {
             $this->_mr = new MapReduce($this);
         return $this->_mr;
     }
-
+    
+    /**
+     * Returns the SecondaryIndex instance (created if not exists)
+     *
+     * @param bool $reset Whether to create a new SecondaryIndex instance
+     * @return \riiak\SecondaryIndex
+     */
+    public function getSecondaryIndexObject($reset = false) {
+        if ($reset || !($this->_sIndex instanceof MapReduce))
+            $this->_sIndex = new SecondaryIndexes ($this);
+        return $this->_sIndex;
+    }
+    
+    /**
+     * Check whether riak supports multi-backend or not.
+     * 
+     * @return bool
+     */
+    public function getIsMultiBackendSupport(){
+        Yii::trace('Checking multi-backend support', 'ext.riiak.Riiak');
+        return $this->_transport->getIsMultiBackendSupport();
+    }
+    
+    /**
+     *  Check whether riak supports secondary index or not.
+     * 
+     * @return bool 
+     */
+    public function getIsSecondaryIndexSupport(){
+        Yii::trace('Checking Secondary Index support', 'ext.riiak.Riiak');
+        return $this->_transport->getIsSecondaryIndexSupport();
+    }
 }

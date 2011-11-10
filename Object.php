@@ -443,5 +443,15 @@ class Object extends CComponent {
     public function getMapReduce($reset = false) {
         return $this->client->getMapReduce($reset);
     }
+    
+    /**
+     * Returns a SecondaryIndexes instance
+     *
+     * @param bool $reset Whether to create a new SecondaryIndexes instance
+     * @return \riiak\SecondaryIndexes
+     */
+    public function getSecondaryIndexObject($reset = false) {
+        return $this->client->getSecondaryIndexObject($reset);
+    }
 
 }

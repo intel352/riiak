@@ -127,4 +127,24 @@ abstract class Transport extends CComponent {
      */
     abstract public function processHeaders($headers);
     
+    /**
+     * Get riak configuration
+     * 
+     * @return array
+     */
+    abstract public function getRiakConfiguration();
+    
+    /**
+     * Check riak supports multi-backend or not.
+     * 
+     * @return bool
+     */
+    abstract public function getIsMultiBackendSupport();
+    
+    /**
+     * Check riak supports secondary index or not.
+     * 
+     * @return bool
+     */
+    abstract public function getIsSecondaryIndexSupport();
 }

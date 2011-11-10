@@ -86,6 +86,50 @@ abstract class Http extends \riiak\Transport{
          */
         return $response;
     }
+    
+    public function buildSIRestPath(\riiak\Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL) {
+        /**
+         * Build http[s]://hostname:port/prefix[/bucket]
+         */
+        $streamKey = '';
+        /**
+         * Check for get bucket keys using keys=stream.
+         */
+        if (!is_null($params) && 0 < count($params) && array_key_exists('keys', $params) && $params['keys'] != 'false') {
+            $path = $this->buildUrl() . '/' . $this->client->bucketPrefix;
+            $streamKey = '/' . $this->client->keyPrefix;
+        } else {
+            $path = $this->buildUrl() . '/' . $this->client->prefix;
+        }
+
+        /**
+         * Add bucket
+         */
+        if (!is_null($objBucket) && $objBucket instanceof \riiak\Bucket)
+            $path .= '/' . urlencode($objBucket->name) . $streamKey;
+
+        /**
+         * Add key
+         */
+        if (!is_null($key))
+            $path .= '/' . urlencode($key);
+
+        /**
+         * Add params for link walking
+         * bucket, tag, keep
+         */
+        if (!is_null($spec))
+            foreach ($spec as $el)
+                $path .= '/' . urlencode($el[0]) . ',' . urlencode($el[1]) . ',' . $el[2];
+
+        /**
+         * Add query parameters
+         */
+        if (!is_null($params))
+            $path .= '?' . http_build_query($params, '', '&');
+
+        return $path;
+    }
 
     /**
      * Builds a REST URL to access Riak API
@@ -97,6 +141,9 @@ abstract class Http extends \riiak\Transport{
      * @return string
      */
     public function buildRestPath(\riiak\Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL) {
+        if ($this->client->_useSecondaryIndex && $this->client->getIsSecondaryIndexSupport() && $params['r'] == 1) {
+            //return $this->buildSIRestPath($objBucket, $key, $spec, $params);
+        }
         /**
          * Build http[s]://hostname:port/prefix[/bucket]
          */
@@ -394,5 +441,71 @@ abstract class Http extends \riiak\Transport{
             $objObject->_data = CJSON::decode($objObject->_data, true);
 
         return $objObject;
+    }
+    
+    /**
+     * Get riak configuration details.
+     * 
+     * @param \riiak\Riiak $objClient
+     * @return array Riak configuration details 
+     */
+    public function getRiakConfiguration(){
+        Yii::trace('Get riak configuration', 'ext.transport.http');
+        if ( 0 < count($this->client->_riakConfiguration)) {
+            return $this->client->_riakConfiguration;
+        }
+        /**
+         * Get riak configuration
+         */
+        $response = $this->processRequest('GET', $this->buildUrl() . '/stats');
+        $this->client->_riakConfiguration = $response['body'];
+        
+        /**
+         * Return riak configuration
+         */
+        return $this->client->_riakConfiguration;
+    }
+    
+    /**
+     * Check riak supports multi-backend functionality or not.
+     * 
+     * @return bool
+     */
+    public function getIsMultiBackendSupport(){
+        Yii::trace('Checking Riak multibackend support', 'ext.transport.http');
+        /**
+         * Get riak configuration
+         */
+        $arrConfiguration = CJSON::decode($this->getRiakConfiguration());
+        
+        /**
+         * Check riak supports multibackend or not
+         */
+        if($arrConfiguration['storage_backend'] == 'riak_kv_multi_backend'){
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Check riak supports secondary index or not.
+     * 
+     * @return bool
+     * @todo Need to add check for leveldb installtion with multi-backend support. 
+     */
+    public function getIsSecondaryIndexSupport(){
+        Yii::trace('Checking Secondary Indexes support', 'ext.transport.http');
+        /**
+         * Get riak configuration
+         */
+        $arrConfiguration = CJSON::decode($this->getRiakConfiguration());
+        
+        /**
+         * Check riak supports leveldb or not
+         */
+        if($arrConfiguration['storage_backend'] == 'riak_kv_eleveldb_backend'){
+            return true;
+        }
+        return false;
     }
 }
