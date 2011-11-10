@@ -50,6 +50,13 @@ class Riiak extends CApplicationComponent {
     public $bucketPrefix = 'buckets';
     
     /**
+     * Riak key for secondary indexes implementation
+     * 
+     * @var string Default: 'index' 
+     */
+    public $SIPrefix = 'index';
+    
+    /**
      * Riak key stream prefix
      * 
      * @var string 
