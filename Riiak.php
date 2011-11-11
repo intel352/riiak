@@ -62,6 +62,11 @@ class Riiak extends CApplicationComponent {
      * @var string 
      */
     public $keyPrefix = 'keys';
+    
+    /**
+     * Secondary Index equal operator
+     */
+    public $SIEqual = 'eq';
 
     /**
      * MapReduce prefix

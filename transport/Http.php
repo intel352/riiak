@@ -87,47 +87,35 @@ abstract class Http extends \riiak\Transport{
         return $response;
     }
     
-    public function buildSIRestPath(\riiak\Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL) {
+    public function buildSIRestPath($objBucket = NULL, $key = NULL, array $params = NULL) {
         /**
          * Build http[s]://hostname:port/prefix[/bucket]
          */
-        $streamKey = '';
-        /**
-         * Check for get bucket keys using keys=stream.
-         */
-        if (!is_null($params) && 0 < count($params) && array_key_exists('keys', $params) && $params['keys'] != 'false') {
-            $path = $this->buildUrl() . '/' . $this->client->bucketPrefix;
-            $streamKey = '/' . $this->client->keyPrefix;
-        } else {
-            $path = $this->buildUrl() . '/' . $this->client->prefix;
-        }
-
+        $path = $this->buildUrl() . '/' . $this->client->bucketPrefix;
+       
         /**
          * Add bucket
          */
-        if (!is_null($objBucket) && $objBucket instanceof \riiak\Bucket)
-            $path .= '/' . urlencode($objBucket->name) . $streamKey;
-
-        /**
-         * Add key
-         */
-        if (!is_null($key))
-            $path .= '/' . urlencode($key);
-
-        /**
-         * Add params for link walking
-         * bucket, tag, keep
-         */
-        if (!is_null($spec))
-            foreach ($spec as $el)
-                $path .= '/' . urlencode($el[0]) . ',' . urlencode($el[1]) . ',' . $el[2];
-
+        if (!is_null($objBucket))
+            $path .= '/' . urlencode($objBucket);
+        
+        if(!is_null($this->client->SIPrefix))
+            $path .= '/' . $this->client->SIPrefix;
+        
         /**
          * Add query parameters
          */
-        if (!is_null($params))
-            $path .= '?' . http_build_query($params, '', '&');
-
+        if (!empty($params)) {
+            foreach($params as $key => $value) {
+               $path .= "/" . $value['column'] . $value['type'];
+               
+               if(!empty($value['operator']))
+               $path .= '/' . $value['operator'];
+               
+               $path .=  "/" . $value['keyword'];
+            }
+        }
+         
         return $path;
     }
 
