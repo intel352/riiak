@@ -54,7 +54,7 @@ class Riiak extends CApplicationComponent {
      * 
      * @var string Default: 'index' 
      */
-    public $SIPrefix = 'index';
+    public $secIndexPrefix = 'index';
     
     /**
      * Riak key stream prefix
@@ -63,11 +63,6 @@ class Riiak extends CApplicationComponent {
      */
     public $keyPrefix = 'keys';
     
-    /**
-     * Secondary Index equal operator
-     */
-    public $SIEqual = 'eq';
-
     /**
      * MapReduce prefix
      *

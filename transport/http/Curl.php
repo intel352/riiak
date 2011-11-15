@@ -5,7 +5,8 @@ namespace riiak\transport\http;
 use \CComponent,
     \CJSON,
     \Exception,
-    \Yii;
+    \Yii,
+    \CLogger;
 
 /**
  * Contains transport layer actions of Riak
@@ -126,7 +127,7 @@ class Curl extends \riiak\transport\Http{
             return $responseData;
         } catch (Exception $e) {
             curl_close($ch);
-            error_log('Error: ' . $e->getMessage());
+            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http.Curl');
             return NULL;
         }
     }
@@ -232,7 +233,7 @@ class Curl extends \riiak\transport\Http{
                          */
                         $results[$url] = array('headers' => $responseHeaders, 'body' => $responses[$url]['responseBodyIO']);
                     } catch (Exception $e) {
-                        error_log('Error: ' . $e->getMessage());
+                        Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http.Curl');
                         $results[$url] = null;
                     }
                     curl_multi_remove_handle($mh, $ch);

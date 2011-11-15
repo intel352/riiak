@@ -4,13 +4,48 @@ namespace riiak\transport;
 
 use \CJSON,
     \Exception,
-    \Yii;
+    \Yii,
+    \CLogger;
 
 /**
  * Contains transport layer actions of Riak
  * @package riiak.transport
  */
 abstract class Http extends \riiak\Transport{
+    /**
+     *
+     * @var object http\Status 
+     */
+    public $status;
+    
+    /**
+     * Get staus handling class object
+     * 
+     * @return object http\Status
+     */
+    public function getStatusObject(){
+        /**
+         * Check for status handling class object
+         */
+        if(!is_object($this->status)){
+            $this->status = new http\Status();
+        }
+        /*
+         * Return status class object
+         */
+        return $this->status;
+    }
+    
+    /**
+     * Method to validate riak response
+     * 
+     * @param string $response
+     * @param string $action
+     * @return bool
+     */
+    public function validateResponse($response, $action){
+        return $this->getStatusObject()->validateStatus($response, $action);
+    }
 
     /**
      * Builds URL to connect to Riak server
@@ -99,8 +134,8 @@ abstract class Http extends \riiak\Transport{
         if (!is_null($objBucket))
             $path .= '/' . urlencode($objBucket);
         
-        if(!is_null($this->client->SIPrefix))
-            $path .= '/' . $this->client->SIPrefix;
+        if(!is_null($this->client->secIndexPrefix))
+            $path .= '/' . $this->client->secIndexPrefix;
         
         /**
          * Add query parameters
@@ -202,8 +237,8 @@ abstract class Http extends \riiak\Transport{
              */
             return array('headers' => $responseHeaders, 'body' => $responseData['body']);
         } catch (Exception $e) {
-            error_log('Error: ' . $e->getMessage());
-            return NULL;
+            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http');
+            throw new Exception(Yii::t('yii', 'Failed to process request.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
 
@@ -336,8 +371,8 @@ abstract class Http extends \riiak\Transport{
             return $responseData;
             
         } catch (Exception $e) {
-            error_log('Error: ' . $e->getMessage());
-            return NULL;
+            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http');
+            throw new Exception(Yii::t('yii', 'Failed to process multi-request.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
     /**

@@ -5,7 +5,8 @@ namespace riiak;
 use \CComponent,
     \CJSON,
     \Exception,
-    \Yii;
+    \Yii,
+    \CLogger;
 
 /**
  * Secondary indexes implementation class
@@ -16,32 +17,38 @@ use \CComponent,
 class SecondaryIndexes extends Backend {
     /**
      *
-     * @var array 
+     * @var array Array to save Search criteria
      */
     protected $search;
     /**
      *
-     * @var string 
+     * @var string Bucket name
      */
     protected $bucket;
     
     /**
      * Secondary Index equal operator
+     * 
+     * @var string  
      */
-    public $SIndexEqual = '';
+    public $secIndexEqual = '';
     
     /**
-     * Secondary Index equal operator
+     * Secondary index binary key suffix
+     * 
+     * @var string
      */
-    public $SIndexBinary = '_bin';
+    public $secIndexBinary = '_bin';
     
     /**
-     * Secondary Index equal operator
+     * Secondary index interger key suffix
+     * 
+     * @var string 
      */
-    public $SIndexInteger = '_int';
+    public $secIndexInteger = '_int';
     
     /**
-     * Method to get keys using secondary index
+     * Method to get list of keys using secondary index
      * 
      * @param object $objCriteria 
      * @return array
@@ -80,7 +87,7 @@ class SecondaryIndexes extends Backend {
     }
     
     /**
-     * Method to prepare key filters
+     * Prepare all key filters
      * 
      * @param array $filter 
      */
@@ -102,22 +109,22 @@ class SecondaryIndexes extends Backend {
                     $arrSearchCriteria[$intIndex]['column']   = $value['column'];
                     $arrSearchCriteria[$intIndex]['keyword']  = $value['keyword'];
                     $valueType = gettype($value['keyword']);
-                    $arrSearchCriteria[$intIndex]['operator'] = $this->SIndexEqual;
+                    $arrSearchCriteria[$intIndex]['operator'] = $this->secIndexEqual;
                     /**
                      * Check type of filter input
                      */
                     if($valueType != 'string') {
-                       $arrSearchCriteria[$intIndex]['type']  = $this->SIndexInteger;
+                       $arrSearchCriteria[$intIndex]['type']  = $this->secIndexInteger;
                     } else {
-                       $arrSearchCriteria[$intIndex]['type']  = $this->SIndexBinary;
+                       $arrSearchCriteria[$intIndex]['type']  = $this->secIndexBinary;
                     }
                     $intIndex++;
                 }
             }
             $this->search = CJSON::encode($arrSearchCriteria);
         } catch (Exception $e) {
-            error_log('Error: ' . $e->getMessage());
-            return NULL;
+             Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.secondaryIndexes');
+             throw new Exception(Yii::t('yii', 'Failed to add search criteria.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
     /**
@@ -127,6 +134,7 @@ class SecondaryIndexes extends Backend {
     public function keyFilterOr(array $filter) {
         
     }
+    
     /**
      * 
      * @param type $objCriteria 

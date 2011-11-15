@@ -147,4 +147,12 @@ abstract class Transport extends CComponent {
      * @return bool
      */
     abstract public function getIsSecondaryIndexSupport();
+    
+    /**
+     * Method to validate riak response
+     * 
+     * @return bool
+     */
+    abstract public function validateResponse($response, $action);
+ 
 }
