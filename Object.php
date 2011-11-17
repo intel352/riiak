@@ -251,7 +251,7 @@ class Object extends CComponent {
         }else{
             $response = $this->client->_transport->post($url, $headers, $content);
         }
-        $this->client->_transport->populate($this, $this->bucket, $response);
+        $this->client->_transport->populate($this, $this->bucket, $response, 'storeObject');
         return $this;
     }
 
@@ -292,7 +292,7 @@ class Object extends CComponent {
     }
 
     public static function populateResponse(Object &$object, $response) {
-        $object->client->_transport->populate($object, $object->bucket, $response, array(200, 300, 404));
+        $object->client->_transport->populate($object, $object->bucket, $response, 'fetchObject');
 
         /**
          * If there are siblings, load the data for the first one by default
@@ -326,7 +326,7 @@ class Object extends CComponent {
          */
         Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
         $response = $this->client->_transport->delete($this->bucket, $this->key, $params, '' );
-        $this->client->_transport->populate($this, $this->bucket, $response, array(204, 404));
+        $this->client->_transport->populate($this, $this->bucket, $response, 'deleteObject');
 
         return $this;
     }
@@ -416,7 +416,7 @@ class Object extends CComponent {
          */
         $obj = new Object($this->client, $this->bucket, $this->key);
         $obj->jsonize = $this->jsonize;
-        $this->client->_transport->populate($obj, $this->bucket, $response, array(200));
+        $this->client->_transport->populate($obj, $this->bucket, $response, 'getSibling');
         return $obj;
     }
 

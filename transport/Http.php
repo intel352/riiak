@@ -28,7 +28,7 @@ abstract class Http extends \riiak\Transport{
          * Check for status handling class object
          */
         if(!is_object($this->status)){
-            $this->status = new http\Status();
+            $this->status = new http\StatusCodes();
         }
         /*
          * Return status class object
@@ -238,7 +238,7 @@ abstract class Http extends \riiak\Transport{
             return array('headers' => $responseHeaders, 'body' => $responseData['body']);
         } catch (Exception $e) {
             Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http');
-            throw new Exception(Yii::t('yii', 'Failed to process request.'), (int) $e->getCode(), $e->errorInfo);
+            throw new Exception(Yii::t('Riiak', 'Failed to process request.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
 
@@ -372,7 +372,7 @@ abstract class Http extends \riiak\Transport{
             
         } catch (Exception $e) {
             Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http');
-            throw new Exception(Yii::t('yii', 'Failed to process multi-request.'), (int) $e->getCode(), $e->errorInfo);
+            throw new Exception(Yii::t('Riiak', 'Failed to process multi-request.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
     /**
@@ -384,10 +384,12 @@ abstract class Http extends \riiak\Transport{
      * @param array $expectedStatuses List of statuses
      * @return \riiak\Object
      */
-    public function populate(\riiak\Object &$objObject, \riiak\Bucket $objBucket, $response = array(), array $expectedStatuses = array()){
+    public function populate(\riiak\Object &$objObject, \riiak\Bucket $objBucket, $response = array(), $action = ''){
         /**
          * Check for allowed response status list.
          */
+        $expectedStatuses = $this->getStatusObject()->getExpecetedStatus($action);
+        
         if(0 >= count($expectedStatuses))
         $expectedStatuses = array(200, 201, 300);
         /**
@@ -419,8 +421,9 @@ abstract class Http extends \riiak\Transport{
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
          */
-        if (!in_array($objObject->status, $expectedStatuses))
+        if(!$this->validateResponse($response, $action)) {
             throw new Exception('Expected status ' . implode(' or ', $expectedStatuses) . ', received ' . $objObject->status);
+        }
 
         /**
          * If 404 (Not Found), then clear the object

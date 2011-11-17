@@ -154,5 +154,12 @@ abstract class Transport extends CComponent {
      * @return bool
      */
     abstract public function validateResponse($response, $action);
+    
+    /**
+     * Get staus handling class object
+     * 
+     * @return object http\Status
+     */
+    abstract public function getStatusObject();
  
 }

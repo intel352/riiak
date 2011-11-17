@@ -346,7 +346,7 @@ class Bucket extends CComponent {
          * Use a Object to interpret the response, we are just interested in the value
          */
         $obj = new Object($this->client, $this);
-        $this->client->_transport->populate($obj, $this, $response, array(200));
+        $this->client->_transport->populate($obj, $this, $response, 'getBucketProperties');
         
         if (!$obj->exists)
             throw new Exception('Error getting bucket properties.');

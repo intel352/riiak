@@ -66,7 +66,11 @@ class SecondaryIndexes extends Backend {
         /**
          * Process request
          */
-        $arrKeys = $this->run(null);
+        if(1 == count($objCriteria->search))
+            $arrKeys = $this->run(null);
+        else
+            $arrKeys = $this->multiCriteriaSearch(null);
+        
         $arrKeys = array_unique($arrKeys['keys']);
         $arrValues = array();
         foreach($arrKeys as $key => $value){
@@ -124,7 +128,7 @@ class SecondaryIndexes extends Backend {
             $this->search = CJSON::encode($arrSearchCriteria);
         } catch (Exception $e) {
              Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.secondaryIndexes');
-             throw new Exception(Yii::t('yii', 'Failed to add search criteria.'), (int) $e->getCode(), $e->errorInfo);
+             throw new Exception(Yii::t('Riiak', 'Failed to add search criteria.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
     /**
@@ -151,5 +155,45 @@ class SecondaryIndexes extends Backend {
         $url = $this->client->_transport->buildSIRestPath($this->bucket, null, $arrSearchCriteria);
         $response = $this->client->_transport->processRequest('GET', $url);
         return CJSON::decode($response['body']);
+    }
+    
+    public function multiCriteriaSearch(){
+        $arrSearchCriteria = array();
+        /**
+         * Get search criteria
+         */
+        $arrSearchCriteria = CJSON::decode($this->search);
+        $arrSearchCriteria = array_combine(array_map(array('self', 'buildSIReloadUrl'), $arrSearchCriteria, array_fill(0, count($arrSearchCriteria), $this)), $arrSearchCriteria);
+        $responses = $this->client->_transport->multiget(array_keys($arrSearchCriteria));
+        //echo "<pre>";
+        //print_r(array_keys($arrSearchCriteria));
+        array_walk($arrSearchCriteria, function($arrSearchCriteria, $url)use(&$responses) {
+                    \riiak\SecondaryIndexes::populateResponse($arrSearchCriteria, $responses[$url]);
+                });
+        //exit;
+        return CJSON::decode($response['body']);
+        /**
+         * Construct URL
+         */
+    }
+    
+    /**
+     *
+     * @param array $params
+     * @param object $object
+     * @return string 
+     */
+    protected static function buildSIReloadUrl($params, $object) {
+        $params = array($params);
+        return $object->client->_transport->buildSIRestPath($object->bucket, null, $params);
+    }
+    
+    /**
+     *
+     * @param array $searchCriteria
+     * @param array $response 
+     */
+    public static function populateResponse($searchCriteria, $response){
+        //print_r($response);
     }
 }
