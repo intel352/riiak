@@ -70,7 +70,9 @@ class SecondaryIndexes extends Backend {
             $arrKeys = $this->run(null);
         else
             $arrKeys = $this->multiCriteriaSearch(null);
-        
+        /**
+         * Get unique key set
+         */
         $arrKeys = array_unique($arrKeys['keys']);
         $arrValues = array();
         foreach($arrKeys as $key => $value){
@@ -127,7 +129,7 @@ class SecondaryIndexes extends Backend {
             }
             $this->search = CJSON::encode($arrSearchCriteria);
         } catch (Exception $e) {
-             Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.secondaryIndexes');
+             Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.SecondaryIndex');
              throw new Exception(Yii::t('Riiak', 'Failed to add search criteria.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
@@ -165,16 +167,23 @@ class SecondaryIndexes extends Backend {
         $arrSearchCriteria = CJSON::decode($this->search);
         $arrSearchCriteria = array_combine(array_map(array('self', 'buildSIReloadUrl'), $arrSearchCriteria, array_fill(0, count($arrSearchCriteria), $this)), $arrSearchCriteria);
         $responses = $this->client->_transport->multiget(array_keys($arrSearchCriteria));
-        //echo "<pre>";
-        //print_r(array_keys($arrSearchCriteria));
-        array_walk($arrSearchCriteria, function($arrSearchCriteria, $url)use(&$responses) {
-                    \riiak\SecondaryIndexes::populateResponse($arrSearchCriteria, $responses[$url]);
-                });
-        //exit;
-        return CJSON::decode($response['body']);
+        $arrIntersect = array();
         /**
-         * Construct URL
+         * Prepare loop handle multiple responses
          */
+        foreach($responses as $key => $response) {
+            $arrKeys = CJSON::decode($response['body']);
+            
+            if(0 >= count($arrIntersect))
+                $arrIntersect = $arrKeys['keys'];
+            
+            $arrIntersect = array_intersect($arrIntersect, $arrKeys['keys']);
+        }
+        /**
+         * Return list of keys which satisfies criteria
+         */
+        $arrOutput['keys'] = $arrIntersect;
+        return $arrOutput;
     }
     
     /**
@@ -188,12 +197,4 @@ class SecondaryIndexes extends Backend {
         return $object->client->_transport->buildSIRestPath($object->bucket, null, $params);
     }
     
-    /**
-     *
-     * @param array $searchCriteria
-     * @param array $response 
-     */
-    public static function populateResponse($searchCriteria, $response){
-        //print_r($response);
-    }
 }

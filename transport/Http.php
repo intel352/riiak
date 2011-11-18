@@ -388,7 +388,7 @@ abstract class Http extends \riiak\Transport{
         /**
          * Check for allowed response status list.
          */
-        $expectedStatuses = $this->getStatusObject()->getExpecetedStatus($action);
+        $expectedStatuses = $this->getStatusObject()->getExpectedStatus($action);
         
         if(0 >= count($expectedStatuses))
         $expectedStatuses = array(200, 201, 300);

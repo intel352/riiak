@@ -20,7 +20,7 @@ class StatusCodes extends \riiak\transport\Status {
         'deleteObject'          => array('204', '404'),
         'linkWalking'           => array('200'),
         'mapReduce'             => array('200'),
-        'secondaryIndexes'      => array('200'),
+        'secondaryIndex'        => array('200'),
         'listBucket'            => array('200'),
         'listKeys'              => array('200'),
         'getBucketProperties'   => array('200'),
@@ -57,7 +57,7 @@ class StatusCodes extends \riiak\transport\Status {
         'mapReduce' => array(
             '200' => 'Ok'
         ),
-        'secondaryIndexes' => array(
+        'secondaryIndex' => array(
             '200' => 'Ok'
         )
     );
@@ -94,7 +94,7 @@ class StatusCodes extends \riiak\transport\Status {
             '500' => 'MapReduce - Internal Server Error – There was an error in processing a map or reduce function',
             '503' => 'MapReduce - Service Unavailable – The job timed out before it could complete'
         ),
-        'secondaryIndexes' => array(
+        'secondaryIndex' => array(
             '400' => 'Secondary Indexes - Bad Request - The index name or index value is invalid.',
             '500' => 'Secondary Indexes - Internal Server Error - There was an error in processing a map or reduce function, or indexing is not supported by the system.',
             '503' => 'Secondary Indexes - Service Unavailable – The job timed out before it could complete'
@@ -108,51 +108,14 @@ class StatusCodes extends \riiak\transport\Status {
      * @return bool 
      */
     public function validateStatus($response, $action) {
-        $status = $this->getResponseStatus($response); 
-        switch($action) {
-            case 'setBucketProperties':
-                return $this->handleResponse($status, 'setBucketProperties');
-            break;
-            case 'fetchObject':
-                return $this->handleResponse($status, 'fetchObject');
-            break;
-            case 'storeObject':
-                return $this->handleResponse($status, 'storeObject');
-            break;
-            case 'deleteObject':
-                return $this->handleResponse($status, 'deleteObject');
-            break;
-            case 'linkWalking':
-                return $this->handleResponse($status, 'linkWalking');
-            break;
-            case 'mapReduce':
-                return $this->handleResponse($status, 'mapReduce');
-            break;
-            case 'secondaryIndexes':
-                return $this->handleResponse($status, 'secondaryIndexes');
-            break;
-            case 'listBucket':
-            case 'listKeys':
-            case 'getSibling':
-            case 'getBucketProperties':
-            case 'ping':
-            case 'status':
-            case 'listResource':
-            default:
-                if($status != 200) {
-                    return false;   
-                }
-            return true;
-            break;
+        $status = $this->getResponseStatus($response);
+        /**
+         * Check for Ok Status (200 = Ok)
+         */
+        if($status != 200) {
+            return $this->handleResponse($status, $action);
         }
-    }
-    
-    public function validateStatus($response, $action) {
-        $status = $this->getResponseStatus($response); 
-        if($status == 200) {
-            return true;   
-        }
-        return $this->handleResponse($status, $action);
+        return true;
     }
     
     /**
@@ -197,7 +160,7 @@ class StatusCodes extends \riiak\transport\Status {
      * @param string $action
      * @return array 
      */
-    public function getExpecetedStatus($action = ''){
+    public function getExpectedStatus($action = ''){
         /**
          * Check for action is exists in expectedStaus array or not.
          */

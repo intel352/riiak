@@ -56,5 +56,5 @@ abstract class Status {
      * @param string $action
      * @return array 
      */
-    abstract public function getExpecetedStatus($action = '');
+    abstract public function getExpectedStatus($action = '');
 }
