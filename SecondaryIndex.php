@@ -14,7 +14,7 @@ use \CComponent,
  * @package riiak
  * @todo Working on dynamically set and get search criteria functionality
  */
-class SecondaryIndexes extends Backend {
+class SecondaryIndex extends Backend {
     /**
      *
      * @var array Array to save Search criteria

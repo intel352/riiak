@@ -445,10 +445,10 @@ class Object extends CComponent {
     }
     
     /**
-     * Returns a SecondaryIndexes instance
+     * Returns a SecondaryIndex instance
      *
-     * @param bool $reset Whether to create a new SecondaryIndexes instance
-     * @return \riiak\SecondaryIndexes
+     * @param bool $reset Whether to create a new SecondaryIndex instance
+     * @return \riiak\SecondaryIndex
      */
     public function getSecondaryIndexObject($reset = false) {
         return $this->client->getSecondaryIndexObject($reset);

@@ -116,7 +116,7 @@ class Riiak extends CApplicationComponent {
     
     /**
      *
-     * @var \riiak\SecondaryIndexes 
+     * @var \riiak\SecondaryIndex 
      */
     protected $_sIndex;
     
