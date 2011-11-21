@@ -171,13 +171,15 @@ class SecondaryIndex extends Backend {
         /**
          * Prepare loop handle multiple responses
          */
+        $index = 0;
         foreach($responses as $key => $response) {
             $arrKeys = CJSON::decode($response['body']);
             
-            if(0 >= count($arrIntersect))
+            if(0 === $index)
                 $arrIntersect = $arrKeys['keys'];
             
             $arrIntersect = array_intersect($arrIntersect, $arrKeys['keys']);
+            $index++;
         }
         /**
          * Return list of keys which satisfies criteria
@@ -195,6 +197,25 @@ class SecondaryIndex extends Backend {
     protected static function buildSIReloadUrl($params, $object) {
         $params = array($params);
         return $object->client->_transport->buildSIRestPath($object->bucket, null, $params);
+    }
+    
+    /**
+     * Prepare list of input keys for Map/Reduce query.
+     * 
+     * @param array $arrkeys
+     * @param string $strBucket
+     * @return array 
+     */
+    public function prepareInputKeys($arrKeys = array(), $strBucket = ''){
+        $arrOutputKeys = array();
+        foreach($arrKeys as $index => $value){
+            $arrOutputKeys[] = array(
+                'key' => $value,
+                'container' => $strBucket,
+                'data' => ''
+            );
+        }
+        return $arrOutputKeys;
     }
     
 }
