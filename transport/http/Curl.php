@@ -9,13 +9,15 @@ use \CComponent,
     \CLogger;
 
 /**
- * Contains transport layer actions of Riak
- * @package http
+ * Curl Object handles all Transport layer operations using CURL
+ * Performs set curl options, read curl options, process request using CURL 
+ * and process HTTP response headers. 
+ * @package riiak.transport.http
  */
 class Curl extends \riiak\transport\Http{
     
     /**
-     * Builds a CURL URL to access Riak API
+     * Builds CURL URL to access Riak API
      *
      * @param string $method
      * @param string $url
@@ -28,7 +30,6 @@ class Curl extends \riiak\transport\Http{
             CURLOPT_URL => $url,
             CURLOPT_HTTPHEADER => $requestHeaders,
         );
-
         switch ($method) {
             case 'GET':
                 $curlOptions[CURLOPT_HTTPGET] = 1;
@@ -65,14 +66,14 @@ class Curl extends \riiak\transport\Http{
     }
 
     /**
-     * Method to process HTTP request using CURL.
+     * Process HTTP request using CURL.
      * 
      * @param \riiak\Riiak $client
      * @param string $method
      * @param string $url
      * @param array $requestHeaders
      * @param object $obj
-     * @return array 
+     * @return array|null
      */
     public function sendRequest($method, $url, array $requestHeaders = array(), $obj = '') {
         /**
@@ -131,8 +132,10 @@ class Curl extends \riiak\transport\Http{
             return NULL;
         }
     }
+    
     /**
      * Parse HTTP header string into an assoc array
+     * 
      * @param array $headers 
      */
     public function processHeaders($headers) {
@@ -151,6 +154,14 @@ class Curl extends \riiak\transport\Http{
         return $retVal;
     }
     
+    /**
+     * Process HTTP request using CURL.
+     * 
+     * @param array $urls
+     * @param array $requestHeaders
+     * @param Object $obj
+     * @return array 
+     */
     public function multiGet(array $urls, array $requestHeaders = array(), $obj = '') {
         /**
          * Init multi-curl
@@ -250,7 +261,7 @@ class Curl extends \riiak\transport\Http{
     }
 
     /**
-     * Method to remove bulk of empty keys from riak response.
+     * Remove bulk of empty keys from Riak response.
      * 
      * @param array $response
      * @param array $params

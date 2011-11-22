@@ -7,9 +7,15 @@ use \CJSON,
     \Yii,
     \CLogger;
 
+/**
+ * StatusCodes Object allows you to validate all Riak operation
+ * responses. 
+ * @package riiak.transport.http
+ */
 class StatusCodes extends \riiak\transport\Status {
+    
     /**
-     * List of Expected status codes from riak operations.
+     * List of Expected status codes for Riak operations.
      * 
      * @var array 
      */
@@ -29,7 +35,7 @@ class StatusCodes extends \riiak\transport\Status {
         'listResource'          => array('200')
         );
     /**
-     * List of normal codes for riak operations
+     * List of normal codes for Riak operations
      * 
      * @var array 
      */
@@ -63,7 +69,7 @@ class StatusCodes extends \riiak\transport\Status {
     );
     
     /**
-     * List of Error codes for riak operations
+     * List of Error codes for Riak operations
      * 
      * @var array 
      */
@@ -102,7 +108,8 @@ class StatusCodes extends \riiak\transport\Status {
     );
     
     /**
-     *
+     * Validate Riak response
+     * 
      * @param string $response
      * @param string $action
      * @return bool 
@@ -119,7 +126,8 @@ class StatusCodes extends \riiak\transport\Status {
     }
     
     /**
-     *
+     * Handle Riak response
+     * 
      * @param string $status
      * @param string $index
      * @return bool 
@@ -146,7 +154,8 @@ class StatusCodes extends \riiak\transport\Status {
     }
     
     /**
-     *
+     * Get Riak response status code
+     * 
      * @param string $response
      * @return string 
      */
@@ -155,7 +164,7 @@ class StatusCodes extends \riiak\transport\Status {
     }
     
     /**
-     * Get expected results form riak operation
+     * Get expected status codes for Riak operation
      * 
      * @param string $action
      * @return array 

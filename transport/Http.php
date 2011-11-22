@@ -8,12 +8,15 @@ use \CJSON,
     \CLogger;
 
 /**
- * Contains transport layer actions of Riak
+ * The Http object allows you to perform all Riak operation 
+ * through HTTP protocol
  * @package riiak.transport
+ *
+ * @abstract
  */
 abstract class Http extends \riiak\Transport{
+    
     /**
-     *
      * @var object http\Status 
      */
     public $status;
@@ -21,11 +24,11 @@ abstract class Http extends \riiak\Transport{
     /**
      * Get staus handling class object
      * 
-     * @return object http\Status
+     * @return object http\StatusCodes
      */
     public function getStatusObject(){
         /**
-         * Check for status handling class object
+         * Check for existing status handling class object
          */
         if(!is_object($this->status)){
             $this->status = new http\StatusCodes();
@@ -37,7 +40,7 @@ abstract class Http extends \riiak\Transport{
     }
     
     /**
-     * Method to validate riak response
+     * Validate Riak response using http\StatusCodes class
      * 
      * @param string $response
      * @param string $action
@@ -48,7 +51,7 @@ abstract class Http extends \riiak\Transport{
     }
 
     /**
-     * Builds URL to connect to Riak server
+     * Builds URL for Riak server communication
      *
      * @return string
      */
@@ -71,17 +74,14 @@ abstract class Http extends \riiak\Transport{
          */
         $url = $this->buildRestPath($objBucket, $key, $spec, $params);
         Yii::trace('Fetching transport layer Bucket properties for bucket "' . $objBucket->name . '"', 'ext.transport.httpRequest');
-
         /**
          * Process request.
          */
         $response = $this->processRequest('GET', $url);
-
         /**
          * Remove bulk of empty keys.
          */
         $response['body'] = $this->getStreamedBucketKeys($response, $params);
-
         /**
          * Return response
          */
@@ -102,41 +102,40 @@ abstract class Http extends \riiak\Transport{
          */
         if ($url == '')
             $url = $this->buildRestPath($objBucket);
-
-        /**
-         * Prepare response header
-         */
         /**
          * Process request.
          */
         $response = $this->processRequest('PUT', $url, $headers, $contents);
-
         /**
          * Set status code
          */
         $response['statusCode'] = $response['headers']['http_code'];
-
         /**
-         * Return response
+         * Return Riak response
          */
         return $response;
     }
     
+    /**
+     * Builds a REST URL to access Riak API
+     *
+     * @param string $key
+     * @param array $params
+     * @return string
+     */
     public function buildSIRestPath($objBucket = NULL, $key = NULL, array $params = NULL) {
         /**
          * Build http[s]://hostname:port/prefix[/bucket]
          */
         $path = $this->buildUrl() . '/' . $this->client->bucketPrefix;
-       
         /**
-         * Add bucket
+         * Add bucket information
          */
         if (!is_null($objBucket))
             $path .= '/' . urlencode($objBucket);
         
         if(!is_null($this->client->secIndexPrefix))
             $path .= '/' . $this->client->secIndexPrefix;
-        
         /**
          * Add query parameters
          */
@@ -150,7 +149,9 @@ abstract class Http extends \riiak\Transport{
                $path .=  "/" . $value['keyword'];
             }
         }
-         
+        /**
+         * Return constructed URL (Riak API Path)
+         */
         return $path;
     }
 
@@ -180,7 +181,6 @@ abstract class Http extends \riiak\Transport{
         } else {
             $path = $this->buildUrl() . '/' . $this->client->prefix;
         }
-
         /**
          * Add bucket
          */
@@ -206,7 +206,9 @@ abstract class Http extends \riiak\Transport{
          */
         if (!is_null($params))
             $path .= '?' . http_build_query($params, '', '&');
-
+        /**
+         * Return constructed URL (Riak API Path)
+         */
         return $path;
     }
 
@@ -225,13 +227,11 @@ abstract class Http extends \riiak\Transport{
              * Process http request using processing method (Curl,fopen etc).
              */
             $responseData = $this->sendRequest($method, $url, $requestHeaders, $obj);
-
             /**
              * Get headers
              */
             $parsedHeaders = $this->processHeaders($responseData['headerData']);
             $responseHeaders = array_merge(array('http_code' => $responseData['http_code']), array_change_key_case($parsedHeaders, CASE_LOWER));
-
             /**
              * Return headers/body array
              */
@@ -305,12 +305,10 @@ abstract class Http extends \riiak\Transport{
          * Process request.
          */
         $response = $this->processRequest('POST', $url, $params, $headers);
-        
         /**
          * Set status code
          */
         $response['statusCode'] = $response['headers']['http_code'];
-        
         /**
          * Return response
          */
@@ -328,22 +326,18 @@ abstract class Http extends \riiak\Transport{
          * Construct URL
          */
         $url = $this->buildRestPath($objBucket, $key, null, $params);
-        
         /**
          * Prepare response header
          */
         Yii::trace('Delete the object in Riak ', 'ext.transport.http');
-        
         /**
          * Process request.
          */
         $response = $this->processRequest('DELETE', $url);
-        
         /**
          * Set status code
          */
         $response['statusCode'] = $response['headers']['http_code'];
-        
         /**
          * Return response
          */
@@ -356,7 +350,7 @@ abstract class Http extends \riiak\Transport{
      * @param array $urls
      * @param array $requestHeaders
      * @param string $obj
-     * @return array 
+     * @return array|null
      */
     public function multiGet(array $urls, array $requestHeaders = array(), $obj = '') {
         try {
@@ -364,17 +358,16 @@ abstract class Http extends \riiak\Transport{
              * Process http request using processing method (Curl,fopen etc).
              */
             $responseData = $this->multiGet($urls, $requestHeaders, $obj);
-
             /**
              * Return headers/body array
              */
             return $responseData;
-            
         } catch (Exception $e) {
             Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http');
             throw new Exception(Yii::t('Riiak', 'Failed to process multi-request.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
+    
     /**
      * Populates the object. Only for internal use
      *
@@ -399,32 +392,27 @@ abstract class Http extends \riiak\Transport{
             $objObject = new \riiak\Object($this->client, $objBucket);
         
         $objObject->clear();
-
         /**
          * If no response given, then return
          */
         if ($response == null)
             return $this;
-
         /**
          * Update the object
          */
         $objObject->headers = $response['headers'];
         $objObject->_data = $response['body'];
-
         /**
          * Check if the server is down (status==0)
          */
         if ($objObject->status == 0)
             throw new Exception('Could not contact Riak Server: ' . $this->buildUrl($this->client) . '!');
-
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
          */
         if(!$this->validateResponse($response, $action)) {
             throw new Exception('Expected status ' . implode(' or ', $expectedStatuses) . ', received ' . $objObject->status);
         }
-
         /**
          * If 404 (Not Found), then clear the object
          */
@@ -432,18 +420,15 @@ abstract class Http extends \riiak\Transport{
             $objObject->clear();
             return $objObject;
         }
-
         /**
          * If we are here, then the object exists
          */
         $objObject->_exists = true;
-
         /**
          * Parse the link header
          */
         if (array_key_exists('link', $objObject->headers))
             $objObject->populateLinks($objObject->headers['link']);
-
         /**
          * If 300 (siblings), load first sibling, store the rest
          */
@@ -459,7 +444,6 @@ abstract class Http extends \riiak\Transport{
             $pathParts = explode('/', $objObject->headers['location']);
             $objObject->key = array_pop($pathParts);
         }
-
         /**
          * Possibly JSON decode
          */
@@ -485,7 +469,6 @@ abstract class Http extends \riiak\Transport{
          */
         $response = $this->processRequest('GET', $this->buildUrl() . '/stats');
         $this->client->_riakConfiguration = $response['body'];
-        
         /**
          * Return riak configuration
          */
@@ -503,7 +486,6 @@ abstract class Http extends \riiak\Transport{
          * Get riak configuration
          */
         $arrConfiguration = CJSON::decode($this->getRiakConfiguration());
-        
         /**
          * Check riak supports multibackend or not
          */
@@ -525,7 +507,6 @@ abstract class Http extends \riiak\Transport{
          * Get riak configuration
          */
         $arrConfiguration = CJSON::decode($this->getRiakConfiguration());
-        
         /**
          * Check riak supports leveldb or not
          */
