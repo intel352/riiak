@@ -56,18 +56,6 @@ class SecondaryIndex extends Backend {
     public $_secondaryIndex;
     
     /**
-     * Construct a new Object
-     *
-     * @param \riiak\Riiak $client A Riiak object
-     */
-    public function __construct(Riiak $client){
-        if(!is_object($this->_secondaryIndex))
-                $this->_secondaryIndex = new \ext\activedocument\modules\secondayindex\Index();
-        
-        parent::__construct($client);
-    }
-    
-    /**
      * Get list of keys which satisfies search criteria
      * Call transport layer methods for Riak connection, handle response
      * and return list of resultant keys.
@@ -141,11 +129,6 @@ class SecondaryIndex extends Backend {
                  * Prepare loop to process each filter
                  */
                 foreach($filter as $key => $value) {
-                    /**
-                     * Check for indexing is present on the column or not.
-                     */
-                    if(!$this->_secondaryIndex->checkColumnIndex($this->bucket, $value['column']))
-                        continue;
                     /**
                      * Set search column details in filter
                      */
