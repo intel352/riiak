@@ -287,17 +287,21 @@ class Bucket extends CComponent {
         $response = $this->client->_transport->put($this, $headers, $content);
 
         /**
-         * Handle the response
+         * Use a Object to interpret the response, we are just interested in the value
          */
-        if ($response == null)
+        $obj = new Object($this->client, $this);
+        $this->client->_transport->populate($obj, $this, $response, 'setBucketProperties');
+        
+        if (!$obj->exists)
             throw new Exception('Error setting bucket properties.');
 
         /**
          * Check the response value
+         * @todo - Will remove it once confirmed it with Jon
          */
-        $status = $response['statusCode'];
+        /*$status = $response['statusCode'];
         if ($status != 204)
-            throw new Exception('Error setting bucket properties.');
+            throw new Exception('Error setting bucket properties.');*/
         
     }
 

@@ -259,8 +259,8 @@ class Riiak extends CApplicationComponent {
      * @return \riiak\SecondaryIndex
      */
     public function getSecondaryIndexObject($reset = false) {
-        if ($reset || !($this->_sIndex instanceof MapReduce))
-            $this->_sIndex = new SecondaryIndex ($this);
+        if ($reset || !($this->_sIndex instanceof SecondaryIndex))
+            $this->_sIndex = new SecondaryIndex($this);
         return $this->_sIndex;
     }
     
