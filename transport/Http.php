@@ -11,23 +11,24 @@ use \CJSON,
  * Contains transport layer actions of Riak
  * @package riiak.transport
  */
-abstract class Http extends \riiak\Transport{
+abstract class Http extends \riiak\Transport {
+
     /**
      *
      * @var object http\Status 
      */
     public $status;
-    
+
     /**
      * Get staus handling class object
      * 
      * @return object http\Status
      */
-    public function getStatusObject(){
+    public function getStatusObject() {
         /**
          * Check for status handling class object
          */
-        if(!is_object($this->status)){
+        if (!is_object($this->status)) {
             $this->status = new http\StatusCodes();
         }
         /*
@@ -35,7 +36,7 @@ abstract class Http extends \riiak\Transport{
          */
         return $this->status;
     }
-    
+
     /**
      * Method to validate riak response
      * 
@@ -43,7 +44,7 @@ abstract class Http extends \riiak\Transport{
      * @param string $action
      * @return bool
      */
-    public function validateResponse($response, $action){
+    public function validateResponse($response, $action) {
         return $this->getStatusObject()->validateStatus($response, $action);
     }
 
@@ -121,36 +122,36 @@ abstract class Http extends \riiak\Transport{
          */
         return $response;
     }
-    
+
     public function buildSIRestPath($objBucket = NULL, $key = NULL, array $params = NULL) {
         /**
          * Build http[s]://hostname:port/prefix[/bucket]
          */
         $path = $this->buildUrl() . '/' . $this->client->bucketPrefix;
-       
+
         /**
          * Add bucket
          */
         if (!is_null($objBucket))
             $path .= '/' . urlencode($objBucket);
-        
-        if(!is_null($this->client->secIndexPrefix))
+
+        if (!is_null($this->client->secIndexPrefix))
             $path .= '/' . $this->client->secIndexPrefix;
-        
+
         /**
          * Add query parameters
          */
         if (!empty($params)) {
-            foreach($params as $key => $value) {
-               $path .= "/" . $value['column'] . $value['type'];
-               
-               if(!empty($value['operator']))
-               $path .= '/' . $value['operator'];
-               
-               $path .=  "/" . $value['keyword'];
+            foreach ($params as $key => $value) {
+                $path .= '/' . $value['column'] . $value['type'];
+
+                if (!empty($value['operator']))
+                    $path .= '/' . $value['operator'];
+
+                $path .= '/' . $value['keyword'];
             }
         }
-         
+
         return $path;
     }
 
@@ -276,20 +277,20 @@ abstract class Http extends \riiak\Transport{
          * Construct URL
          */
         $url = $this->buildRestPath() . '?buckets=true';
-        
+
         /**
          * Send request to fetch buckets.
          */
         $response = $this->processRequest('GET', $url);
         $responseObj = (array) CJSON::decode($response['body']);
         $buckets = array();
-        
+
         /**
          * Prepare loop to process bucket list.
          */
         foreach ($responseObj['buckets'] as $name)
             $buckets[] = $this->client->bucket($name);
-        
+
         /**
          * Return bucket array.
          */
@@ -305,51 +306,51 @@ abstract class Http extends \riiak\Transport{
          * Process request.
          */
         $response = $this->processRequest('POST', $url, $params, $headers);
-        
+
         /**
          * Set status code
          */
         $response['statusCode'] = $response['headers']['http_code'];
-        
+
         /**
          * Return response
          */
         return $response;
     }
-    
+
     /**
      *
      * @param string $url
      * @param array $params
      * @param string $headers 
      */
-    public function delete(\riiak\Bucket $objBucket = NULL, $key = '', array $params = array(), $headers = ''){
+    public function delete(\riiak\Bucket $objBucket = NULL, $key = '', array $params = array(), $headers = '') {
         /**
          * Construct URL
          */
         $url = $this->buildRestPath($objBucket, $key, null, $params);
-        
+
         /**
          * Prepare response header
          */
         Yii::trace('Delete the object in Riak ', 'ext.transport.http');
-        
+
         /**
          * Process request.
          */
         $response = $this->processRequest('DELETE', $url);
-        
+
         /**
          * Set status code
          */
         $response['statusCode'] = $response['headers']['http_code'];
-        
+
         /**
          * Return response
          */
         return $response;
     }
-    
+
     /**
      * Get (fetch) multiple objects
      * 
@@ -369,12 +370,12 @@ abstract class Http extends \riiak\Transport{
              * Return headers/body array
              */
             return $responseData;
-            
         } catch (Exception $e) {
             Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http');
             throw new Exception(Yii::t('Riiak', 'Failed to process multi-request.'), (int) $e->getCode(), $e->errorInfo);
         }
     }
+
     /**
      * Populates the object. Only for internal use
      *
@@ -384,20 +385,20 @@ abstract class Http extends \riiak\Transport{
      * @param array $expectedStatuses List of statuses
      * @return \riiak\Object
      */
-    public function populate(\riiak\Object &$objObject, \riiak\Bucket $objBucket, $response = array(), $action = ''){
+    public function populate(\riiak\Object &$objObject, \riiak\Bucket $objBucket, $response = array(), $action = '') {
         /**
          * Check for allowed response status list.
          */
         $expectedStatuses = $this->getStatusObject()->getExpectedStatus($action);
-        
-        if(0 >= count($expectedStatuses))
-        $expectedStatuses = array(200, 201, 300);
+
+        if (0 >= count($expectedStatuses))
+            $expectedStatuses = array(200, 201, 300);
         /**
          * Check for riiak\Object class object
          */
-        if(!is_object($objObject))
+        if (!is_object($objObject))
             $objObject = new \riiak\Object($this->client, $objBucket);
-        
+
         $objObject->clear();
 
         /**
@@ -421,7 +422,7 @@ abstract class Http extends \riiak\Transport{
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
          */
-        if(!$this->validateResponse($response, $action)) {
+        if (!$this->validateResponse($response, $action)) {
             throw new Exception('Expected status ' . implode(' or ', $expectedStatuses) . ', received ' . $objObject->status);
         }
 
@@ -468,16 +469,16 @@ abstract class Http extends \riiak\Transport{
 
         return $objObject;
     }
-    
+
     /**
      * Get riak configuration details.
      * 
      * @param \riiak\Riiak $objClient
      * @return array Riak configuration details 
      */
-    public function getRiakConfiguration(){
+    public function getRiakConfiguration() {
         Yii::trace('Get riak configuration', 'ext.transport.http');
-        if ( 0 < count($this->client->_riakConfiguration)) {
+        if (0 < count($this->client->_riakConfiguration)) {
             return $this->client->_riakConfiguration;
         }
         /**
@@ -485,53 +486,54 @@ abstract class Http extends \riiak\Transport{
          */
         $response = $this->processRequest('GET', $this->buildUrl() . '/stats');
         $this->client->_riakConfiguration = $response['body'];
-        
+
         /**
          * Return riak configuration
          */
         return $this->client->_riakConfiguration;
     }
-    
+
     /**
      * Check riak supports multi-backend functionality or not.
      * 
      * @return bool
      */
-    public function getIsMultiBackendSupport(){
+    public function getIsMultiBackendSupport() {
         Yii::trace('Checking Riak multibackend support', 'ext.transport.http');
         /**
          * Get riak configuration
          */
         $arrConfiguration = CJSON::decode($this->getRiakConfiguration());
-        
+
         /**
          * Check riak supports multibackend or not
          */
-        if($arrConfiguration['storage_backend'] == 'riak_kv_multi_backend'){
+        if ($arrConfiguration['storage_backend'] == 'riak_kv_multi_backend') {
             return true;
         }
         return false;
     }
-    
+
     /**
      * Check riak supports secondary index or not.
      * 
      * @return bool
      * @todo Need to add check for leveldb installtion with multi-backend support. 
      */
-    public function getIsSecondaryIndexSupport(){
+    public function getIsSecondaryIndexSupport() {
         Yii::trace('Checking Secondary Indexes support', 'ext.transport.http');
         /**
          * Get riak configuration
          */
         $arrConfiguration = CJSON::decode($this->getRiakConfiguration());
-        
+
         /**
          * Check riak supports leveldb or not
          */
-        if($arrConfiguration['storage_backend'] == 'riak_kv_eleveldb_backend'){
+        if ($arrConfiguration['storage_backend'] == 'riak_kv_eleveldb_backend') {
             return true;
         }
         return false;
     }
+
 }
