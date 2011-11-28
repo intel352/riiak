@@ -186,6 +186,7 @@ class MapReduce extends Backend {
 
         return $this;
     }
+
     /**
      * Run the map/reduce operation. Returns array of results
      * or Link objects if last phase is link phase
@@ -195,7 +196,6 @@ class MapReduce extends Backend {
      */
     public function run($timeout = null) {
         $numPhases = count($this->phases);
-
         $linkResultsFlag = false;
 
         /**
@@ -239,16 +239,14 @@ class MapReduce extends Backend {
         if ($timeout != null)
             $job['timeout'] = $timeout;
         $content = CJSON::encode($job);
-        $bucket = $this->inputs;
-
 
         /**
          * Execute the request
          */
         Yii::trace('Running Map/Reduce query', 'ext.riiak.MapReduce');
-        
-        $url = $this->client->_transport->buildUrl($this->client) . '/' . $this->client->mapredPrefix;
-        $response = $this->client->_transport->post($url, array(), $content);
+
+        $url = $this->client->transport->baseUrl($this->client) . '/' . $this->client->mapredPrefix;
+        $response = $this->client->transport->post($url, array(), $content);
         $result = CJSON::decode($response['body']);
 
         /**
@@ -275,4 +273,5 @@ class MapReduce extends Backend {
         }
         return $a;
     }
+
 }

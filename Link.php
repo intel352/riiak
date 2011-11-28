@@ -1,6 +1,7 @@
 <?php
 
 namespace riiak;
+
 use \CComponent;
 
 /**
@@ -9,25 +10,28 @@ use \CComponent;
  * @package riiak
  */
 class Link extends CComponent {
-    
+
     /**
      * Bucket name
      *
      * @var string
      */
     public $bucket;
+
     /**
      * Key
      *
      * @var string
      */
     public $key;
+
     /**
      * Tag
      *
      * @var string
      */
-    protected $_tag=null;
+    protected $_tag = null;
+
     /**
      * Client instance
      *
@@ -42,7 +46,7 @@ class Link extends CComponent {
      * @param string $key The key
      * @param string $tag The tag
      */
-    public function __construct($bucket, $key, $tag=null) {
+    public function __construct($bucket, $key, $tag = null) {
         $this->bucket = $bucket;
         $this->key = $key;
         $this->_tag = $tag;
@@ -54,7 +58,7 @@ class Link extends CComponent {
      * @param int $r The R-value to use
      * @return \riiak\Object
      */
-    public function get($r=NULL) {
+    public function get($r = NULL) {
         return $this->client->bucket($this->bucket)->get($this->key, $r);
     }
 
@@ -64,7 +68,7 @@ class Link extends CComponent {
      * @param int $r The R-value to use
      * @return \riiak\Object
      */
-    public function getBinary($r=NULL) {
+    public function getBinary($r = NULL) {
         return $this->client->bucket($this->bucket)->getBinary($this->key, $r);
     }
 
@@ -74,7 +78,7 @@ class Link extends CComponent {
      * @return string
      */
     public function getTag() {
-        return $this->_tag?:$this->bucket;
+        return $this->_tag? : $this->bucket;
     }
 
     /**
@@ -96,10 +100,10 @@ class Link extends CComponent {
      */
     public function toLinkHeader($client) {
         $link = '</' .
-            $client->prefix . '/' .
-            urlencode($this->bucket) . '/' .
-            urlencode($this->key) . '>; riaktag=\'' .
-            urlencode($this->getTag()) . '\'';
+                $client->prefix . '/' .
+                urlencode($this->bucket) . '/' .
+                urlencode($this->key) . '>; riaktag=\'' .
+                urlencode($this->getTag()) . '\'';
         return $link;
     }
 
@@ -111,9 +115,9 @@ class Link extends CComponent {
      */
     public function isEqual(Link $link) {
         $isEqual =
-            ($this->bucket == $link->bucket) &&
-            ($this->key == $link->key) &&
-            ($this->getTag() == $link->getTag());
+                ($this->bucket == $link->bucket) &&
+                ($this->key == $link->key) &&
+                ($this->getTag() == $link->getTag());
         return $isEqual;
     }
 

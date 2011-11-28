@@ -9,39 +9,49 @@ use \CJSON,
 
 /**
  * StatusCodes Object allows you to validate all Riak operation
- * responses. 
+ * responses.
  * @package riiak.transport.http
  */
 class StatusCodes extends \riiak\transport\Status {
-    
+
     /**
      * List of Expected status codes for Riak operations.
-     * 
-     * @var array 
+     *
+     * @var array
      */
-    protected $expectedStatus   =  array(
-        'setBucketProperties'   => array('200'),
-        'fetchObject'           => array('200', '300', '304'),
-        'storeObject'           => array('201', '204', '300'),
-        'deleteObject'          => array('204', '404'),
-        'linkWalking'           => array('200'),
-        'mapReduce'             => array('200'),
-        'secondaryIndex'        => array('200'),
-        'listBucket'            => array('200'),
-        'listKeys'              => array('200'),
-        'getBucketProperties'   => array('200'),
-        'ping'                  => array('200'),
-        'status'                => array('200'),
-        'listResource'          => array('200')
-        );
+    protected $expectedStatus = array(
+        'listBuckets' => array('200'),
+        'listKeys' => array('200'),
+        'getBucketProperties' => array('200'),
+        'setBucketProperties' => array('204'),
+        'fetchObject' => array('200', '300', '304'),
+        'storeObject' => array('200', '201', '204', '300'),
+        'deleteObject' => array('204', '404'),
+        'linkWalking' => array('200'),
+        'mapReduce' => array('200'),
+        'secondaryIndex' => array('200'),
+        'ping' => array('200'),
+        'status' => array('200'),
+        'listResource' => array('200')
+    );
+
     /**
      * List of normal codes for Riak operations
-     * 
-     * @var array 
+     *
+     * @var array
      */
     protected $normalCodes = array(
-        'setBucketProperties' => array(
+        'listBuckets' => array(
             '200' => 'OK'
+        ),
+        'listKeys' => array(
+            '200' => 'OK'
+        ),
+        'getBucketProperties' => array(
+            '200' => 'OK'
+        ),
+        'setBucketProperties' => array(
+            '204' => 'No Content'
         ),
         'fetchObject' => array(
             '200' => 'OK',
@@ -49,6 +59,7 @@ class StatusCodes extends \riiak\transport\Status {
             '304' => 'Not Modified'
         ),
         'storeObject' => array(
+            '200' => 'OK',
             '201' => 'Created',
             '204' => 'No Content',
             '300' => 'Multiple Choices'
@@ -65,17 +76,25 @@ class StatusCodes extends \riiak\transport\Status {
         ),
         'secondaryIndex' => array(
             '200' => 'Ok'
-        )
+        ),
+        'ping' => array(
+            '200' => 'OK'
+        ),
+        'status' => array(
+            '200' => 'OK'
+        ),
+        'listResource' => array(
+            '200' => 'OK'
+        ),
     );
-    
+
     /**
      * List of Error codes for Riak operations
-     * 
-     * @var array 
+     *
+     * @var array
      */
     protected $errorCodes = array(
         'setBucketProperties' => array(
-            '204' => 'Set Bucket Properties - No Content',
             '400' => 'Set Bucket Properties - Bad Request - Submitted JSON is invalid',
             '415' => 'Set Bucket Properties - Unsupported Media Type - The Content-Type was not set to application/json in the request'
         ),
@@ -96,86 +115,91 @@ class StatusCodes extends \riiak\transport\Status {
             '404' => 'Link Walking - Not Found - Origin object of the walk was missing'
         ),
         'mapReduce' => array(
-            '400' => 'MapReduce - Bad Request – Invalid job is submitted.',
-            '500' => 'MapReduce - Internal Server Error – There was an error in processing a map or reduce function',
-            '503' => 'MapReduce - Service Unavailable – The job timed out before it could complete'
+            '400' => 'MapReduce - Bad Request - Invalid job is submitted.',
+            '500' => 'MapReduce - Internal Server Error - There was an error in processing a map or reduce function',
+            '503' => 'MapReduce - Service Unavailable - The job timed out before it could complete'
         ),
         'secondaryIndex' => array(
             '400' => 'Secondary Indexes - Bad Request - The index name or index value is invalid.',
             '500' => 'Secondary Indexes - Internal Server Error - There was an error in processing a map or reduce function, or indexing is not supported by the system.',
-            '503' => 'Secondary Indexes - Service Unavailable – The job timed out before it could complete'
+            '503' => 'Secondary Indexes - Service Unavailable - The job timed out before it could complete'
+        ),
+        'status' => array(
+            '404' => 'Riak Server Status - Not Found - The setting "riak_kv_stat" may be disabled',
         )
     );
-    
+
     /**
      * Validate Riak response
-     * 
+     *
      * @param string $response
      * @param string $action
-     * @return bool 
+     * @return bool
      */
     public function validateStatus($response, $action) {
         $status = $this->getResponseStatus($response);
+
         /**
          * Check for Ok Status (200 = Ok)
          */
-        if($status != 200) {
+        if ($status != 200)
             return $this->handleResponse($status, $action);
-        }
+
         return true;
     }
-    
+
     /**
      * Handle Riak response
-     * 
+     *
      * @param string $status
      * @param string $index
-     * @return bool 
+     * @return bool
      */
     public function handleResponse($status, $index) {
         /**
          * Check for OK status(200)
          */
-        if($status != 200) {
+        if ($status != 200) {
             /**
              * Check for normal status codes
              */
-            if(!in_array($status, $this->normalCodes[$index])) {
+            if (!in_array($status, $this->normalCodes[$index])) {
                 /**
                  * Check for error codes
                  */
-                if(in_array($status, $this->errorCodes[$index])) {
-                    Yii::log($this->errorCodes[$index][$status], CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http.Status');
+                if (in_array($status, $this->errorCodes[$index])) {
+                    Yii::log($this->errorCodes[$index][$status], CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.statusCodes.handleResponse');
                     return false;
                 }
             }
         }
         return true;
     }
-    
+
     /**
      * Get Riak response status code
-     * 
+     *
      * @param string $response
-     * @return string 
+     * @return string
      */
     public function getResponseStatus($response) {
         return $response['headers']['http_code'];
     }
-    
+
     /**
      * Get expected status codes for Riak operation
-     * 
+     *
      * @param string $action
-     * @return array 
+     * @return array
      */
-    public function getExpectedStatus($action = ''){
+    public function getExpectedStatus($action = '') {
         /**
          * Check for action is exists in expectedStaus array or not.
          */
-        if(!array_key_exists($action, $this->expectedStatus))
+        if (!array_key_exists($action, $this->expectedStatus))
             return array('200');
-        
+
         return $this->expectedStatus[$action];
     }
+
 }

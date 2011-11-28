@@ -1,2 +1,6 @@
 \.orig$
 \.bak$
+\.orig\..*$
+\.chg\..*$
+\.rej$
+\.conflict\~$

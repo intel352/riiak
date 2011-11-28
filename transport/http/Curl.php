@@ -10,12 +10,12 @@ use \CComponent,
 
 /**
  * Curl Object handles all Transport layer operations using CURL
- * Performs set curl options, read curl options, process request using CURL 
- * and process HTTP response headers. 
+ * Performs set curl options, read curl options, process request using CURL
+ * and process HTTP response headers.
  * @package riiak.transport.http
  */
-class Curl extends \riiak\transport\Http{
-    
+class Curl extends \riiak\transport\Http {
+
     /**
      * Builds CURL URL to access Riak API
      *
@@ -67,7 +67,7 @@ class Curl extends \riiak\transport\Http{
 
     /**
      * Process HTTP request using CURL.
-     * 
+     *
      * @param \riiak\Riiak $client
      * @param string $method
      * @param string $url
@@ -83,7 +83,7 @@ class Curl extends \riiak\transport\Http{
         $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $obj);
 
         if ($this->client->enableProfiling)
-            $profileToken = 'ext.Transport.Curl.httpRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
+            $profileToken = 'ext.riiak.transport.http.curl.sendRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
         /**
          * Capture response headers
@@ -106,7 +106,7 @@ class Curl extends \riiak\transport\Http{
         curl_setopt_array($ch, $curlOpts);
         try {
             if ($this->client->enableProfiling)
-                Yii::beginProfile($profileToken, 'ext.Transport.Curl.httpRequest');
+                Yii::beginProfile($profileToken, 'ext.riiak.transport.http.curl.sendRequest');
 
             /**
              * Run the request
@@ -116,27 +116,28 @@ class Curl extends \riiak\transport\Http{
             curl_close($ch);
 
             if ($this->client->enableProfiling)
-                Yii::endProfile($profileToken, 'ext.Transport.Curl.httpRequest');
+                Yii::endProfile($profileToken, 'ext.riiak.transport.http.curl.sendRequest');
 
             /**
              * Prepare curl response
              */
             $responseData = array('http_code' => $httpCode, 'headerData' => $responseHeadersIO, 'body' => $responseBodyIO);
+
             /**
              * Return curl response.
              */
             return $responseData;
         } catch (Exception $e) {
             curl_close($ch);
-            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http.Curl');
+            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.curl.sendRequest');
             return NULL;
         }
     }
-    
+
     /**
      * Parse HTTP header string into an assoc array
-     * 
-     * @param array $headers 
+     *
+     * @param array $headers
      */
     public function processHeaders($headers) {
         $retVal = array();
@@ -144,23 +145,22 @@ class Curl extends \riiak\transport\Http{
         foreach ($fields as $field) {
             if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
                 $match[1] = preg_replace('/(?<=^|[\x09\x20\x2D])./e', 'strtoupper("\0")', strtolower(trim($match[1])));
-                if (isset($retVal[$match[1]])) {
+                if (isset($retVal[$match[1]]))
                     $retVal[$match[1]] = array($retVal[$match[1]], $match[2]);
-                } else {
+                else
                     $retVal[$match[1]] = trim($match[2]);
-                }
             }
         }
         return $retVal;
     }
-    
+
     /**
-     * Process HTTP request using CURL.
-     * 
+     * Process HTTP request using CURL
+     *
      * @param array $urls
      * @param array $requestHeaders
      * @param Object $obj
-     * @return array 
+     * @return array
      */
     public function multiGet(array $urls, array $requestHeaders = array(), $obj = '') {
         /**
@@ -171,7 +171,7 @@ class Curl extends \riiak\transport\Http{
 
         Yii::trace('Executing HTTP Multi ' . $method . ': ' . \CVarDumper::dumpAsString($urls) . ($obj ? ' with content "' . $obj . '"' : ''), 'ext.Transport.Http.Curl');
         if ($this->client->enableProfiling)
-            $profileToken = 'ext.Transport.Curl.httpMultiGet(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
+            $profileToken = 'ext.riiak.transport.http.curl.multiGet(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
         $instanceMap = array();
         $responses = array_map(function($url)use(&$mh, $curlOpts, &$instanceMap) {
@@ -207,7 +207,7 @@ class Curl extends \riiak\transport\Http{
                 }, array_combine($urls, $urls));
 
         if ($this->client->enableProfiling)
-            Yii::beginProfile($profileToken, 'ext.Transport.Curl.httpMultiGet');
+            Yii::beginProfile($profileToken, 'ext.riiak.transport.http.curl.multiGet');
 
         do {
             $status = curl_multi_exec($mh, $active);
@@ -225,6 +225,7 @@ class Curl extends \riiak\transport\Http{
                  */
                 if (($mhinfo = curl_multi_info_read($mh))) {
                     $ch = $mhinfo['handle'];
+
                     /**
                      * Find which URL this response belongs to
                      */
@@ -244,9 +245,10 @@ class Curl extends \riiak\transport\Http{
                          */
                         $results[$url] = array('headers' => $responseHeaders, 'body' => $responses[$url]['responseBodyIO']);
                     } catch (Exception $e) {
-                        Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http.Curl');
+                        Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.curl.multiGet');
                         $results[$url] = null;
                     }
+
                     curl_multi_remove_handle($mh, $ch);
                     curl_close($ch);
                 }
@@ -254,7 +256,7 @@ class Curl extends \riiak\transport\Http{
         }
 
         if ($this->client->enableProfiling)
-            Yii::endProfile($profileToken, 'ext.Transport.Curl.httpMultiGet');
+            Yii::endProfile($profileToken, 'ext.riiak.transport.http.curl.multiGet');
 
         curl_multi_close($mh);
         return $results;
@@ -262,7 +264,7 @@ class Curl extends \riiak\transport\Http{
 
     /**
      * Remove bulk of empty keys from Riak response.
-     * 
+     *
      * @param array $response
      * @param array $params
      * @return String  List of keys in JSON format.
@@ -273,6 +275,7 @@ class Curl extends \riiak\transport\Http{
          */
         if (!array_key_exists('keys', $params) || $params['keys'] != 'stream')
             return $response['body'];
+
         /**
          * Replace all blank array keys.
          */
@@ -284,13 +287,15 @@ class Curl extends \riiak\transport\Http{
         $arrInput = array();
         $arrOutput = array();
         $strKeys = '';
+
         /**
          *  Convert input string into array
-         *  for example : 
-         *  Input string is {"keys":[]}{"keys":["admin"]}{"keys":[]}{"keys":["test"]} etc. 
+         *  for example :
+         *  Input string is {"keys":[]}{"keys":["admin"]}{"keys":[]}{"keys":["test"]} etc.
          *  then output wiil be {"keys":[]},{"keys":["admin"]},{"keys":[]},{"keys":["test"]}
          */
         $arrInput = explode('#,#', str_replace('}{', '}#,#{', $response['body']));
+
         /**
          * Prepare loop to process input array.
          */
@@ -303,16 +308,16 @@ class Curl extends \riiak\transport\Http{
             /**
              *  Check for keys count is greate than 0.
              */
-            if (array_key_exists('keys', $data) && 1 < count($data['keys'])) {
+            if (array_key_exists('keys', $data) && 1 < count($data['keys']))
                 $strKeys .= implode('#,#', $data['keys']) . '#,#';
-            } else if (array_key_exists('keys', $data) && 0 < count($data['keys'])) {
+            else if (array_key_exists('keys', $data) && 0 < count($data['keys']))
                 $strKeys .= $data['keys'][0] . '#,#';
-            }
         }
+
         /**
          * Return list of keys as JSON string.
          */
-        $arrOutput["keys"] = explode('#,#', substr($strKeys, 0, strlen($strKeys) - 3));
+        $arrOutput['keys'] = explode('#,#', substr($strKeys, 0, strlen($strKeys) - 3));
         return CJSON::encode($arrOutput);
     }
 
