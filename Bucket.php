@@ -189,19 +189,20 @@ class Bucket extends CComponent {
     }
 
     public function getMulti(array $keys, $r = null) {
-        return $this->getBinary($keys, $r, true);
+        return $this->getMultiBinary($keys, $r, true);
     }
 
     public function getMultiBinary(array $keys, $r = null, $jsonize = false) {
         $bucket = $this;
         $client = $this->client;
+        $object = new Object($client, $bucket);
         $objects = array_map(function($key)use($jsonize, $client, $bucket) {
                     $obj = new Object($client, $bucket, $key);
                     $obj->jsonize = $jsonize;
                     return $obj;
                 }, $keys);
         $r = $this->getR($r);
-        return $obj->reloadMulti($objects, $r);
+        return $object->reloadMulti($client, $objects, $r);
     }
 
     /**

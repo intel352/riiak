@@ -165,7 +165,7 @@ abstract class Http extends \riiak\Transport{
      * @return string
      */
     public function buildRestPath(\riiak\Bucket $objBucket = NULL, $key = NULL, $spec = NULL, array $params = NULL) {
-        if ($this->client->_useSecondaryIndex && $this->client->getIsSecondaryIndexSupport() && $params['r'] == 1) {
+        if ($this->client->_useSecondaryIndex && $this->client->getIsSecondaryIndexSupport() && !empty($params) && array_key_exists('r', $params) && $params['r'] == 1) {
             //return $this->buildSIRestPath($objBucket, $key, $spec, $params);
         }
         /**

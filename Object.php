@@ -215,7 +215,7 @@ class Object extends CComponent {
          * Construct the URL
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
-        $url = $this->client->_transport->buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $url = $this->client->_transport->buildRestPath($this->bucket, $this->key, null, $params);
 
         /**
          * Construct the headers
@@ -298,7 +298,7 @@ class Object extends CComponent {
          * If there are siblings, load the data for the first one by default
          */
         if ($object->getHasSiblings()) {
-            $obj = $this->getSibling(0);
+            $obj = $object->getSibling(0);
             $object->_data = $obj->data;
         }
 

@@ -169,7 +169,7 @@ class Curl extends \riiak\transport\Http{
         $mh = curl_multi_init();
         $curlOpts = $this->buildCurlOpts('GET', '', $requestHeaders, $obj);
 
-        Yii::trace('Executing HTTP Multi ' . $method . ': ' . \CVarDumper::dumpAsString($urls) . ($obj ? ' with content "' . $obj . '"' : ''), 'ext.Transport.Http.Curl');
+        Yii::trace('Executing HTTP Multi GET: ' . \CVarDumper::dumpAsString($urls) . ($obj ? ' with content "' . $obj . '"' : ''), 'ext.Transport.Http.Curl');
         if ($this->client->enableProfiling)
             $profileToken = 'ext.Transport.Curl.httpMultiGet(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
