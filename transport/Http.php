@@ -72,7 +72,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Construct the URL
          */
-        $url = $this->buildBucketPath($bucket, $key, $spec, $params);
+        $url = $this->buildBucketKeyPath($bucket, $key, $spec, $params);
         Yii::trace('Fetching transport layer Bucket properties for bucket "' . $bucket->name . '"', 'ext.riiak.transport.httpRequest');
 
         /**
@@ -105,7 +105,7 @@ abstract class Http extends \riiak\Transport {
          * Construct the request URL.
          */
         if ($url == '')
-            $url = $this->buildBucketPath($bucket);
+            $url = $this->buildBucketKeyPath($bucket);
 
         /**
          * Process request.
@@ -124,69 +124,80 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * Builds a REST URL to access Riak API
-     *
-     * @param string $key
-     * @param array $params
+     * @param string $appendPath optional
+     * @param array $params optional
      * @return string
      */
-    public function buildSIRestPath($objBucket = NULL, $key = NULL, array $params = NULL) {
-        /**
-         * Build http[s]://hostname:port/prefix[/bucket]
-         */
-        $path = $this->baseUrl() . '/' . $this->client->bucketPrefix;
-
-        /**
-         * Add bucket information
-         */
-        if (!is_null($objBucket))
-            $path .= '/' . urlencode($objBucket);
-
-        if (!is_null($this->client->secIndexPrefix))
-            $path .= '/' . $this->client->secIndexPrefix;
-
-        /**
-         * Add query parameters
-         */
-        if (!empty($params)) {
-            foreach ($params as $key => $value) {
-                $path .= '/' . $value['column'] . $value['type'];
-
-                if (!empty($value['operator']))
-                    $path .= '/' . $value['operator'];
-
-                $path .= '/' . $value['keyword'];
-            }
-        }
+    public function buildMapReducePath($appendPath = NULL, array $params = NULL) {
+        $path = '/' . $this->client->mapredPrefix;
 
         /**
          * Return constructed URL (Riak API Path)
          */
-        return $path;
-    }
-
-    public function buildMapReducePath() {
-        ;
-    }
-
-    public function buildBucketIndexPath(\riiak\Bucket $bucket, array $indexes, array $params = NULL) {
-        ;
-    }
-
-    public function buildBucketKeyPath(\riiak\Bucket $bucket, $key = NULL, array $links = NULL, array $params = NULL) {
-        ;
+        return $this->buildUri($path . $appendPath, $params);
     }
 
     /**
-     * Builds URL to access bucket information via Riak API
+     * Given bucket, key, linkspec, params, construct and return url for searching
+     * secondary indices
+     *
+     * @author Eric Stevens <estevens@taglabsinc.com>
      *
      * @param \riiak\Bucket $bucket
-     * @param string $key
-     * @param array $links
-     * @param array $params
+     * @param string $index Index name and type (e.g. - 'indexName_bin')
+     * @param string|int $start Starting value or exact match if no end value
+     * @param string|int $end optional Ending value for range search
+     * @param array $params optional Any extra query parameters
      * @return string
      */
-    public function buildBucketPath(\riiak\Bucket $bucket = NULL, $key = NULL, array $links = NULL, array $params = NULL) {
+    public function buildBucketIndexPath(\riiak\Bucket $bucket, $index, $start, $end = NULL, array $params = NULL) {
+        $path = '/' . $this->client->indexPrefix . '/' . urlencode($index) . '/' . urlencode($start);
+
+        if (!is_null($end))
+            $path .= '/' . urlencode($end);
+
+        return $this->buildBucketPath($bucket, $path, $params);
+    }
+
+    /**
+     * Builds URL for Riak bucket/keys query
+     *
+     * @param \riiak\Bucket $bucket
+     * @param string $key optional
+     * @param array $links optional
+     * @param array $params optional
+     * @return string
+     */
+    public function buildBucketKeyPath(\riiak\Bucket $bucket, $key = NULL, array $links = NULL, array $params = NULL) {
+        $path = '/' . $this->client->keyPrefix;
+
+        /**
+         * Add key
+         */
+        if (!is_null($key)) {
+            $path .= '/' . urlencode($key);
+
+            /**
+             * Add params for link walking
+             * bucket, tag, keep
+             */
+            if (!is_null($links))
+                foreach ($links as $el)
+                    $path .= '/' . urlencode($el[0]) . ',' . urlencode($el[1]) . ',' . $el[2];
+        }
+
+        return $this->buildBucketPath($bucket, $path, $params);
+    }
+
+    /**
+     * Builds URL for Riak bucket query
+     *
+     * @param \riiak\Bucket $bucket optional
+     * @param string $appendPath optional
+     * @param array $params optional
+     * @return string
+     */
+    public function buildBucketPath(\riiak\Bucket $bucket = NULL, $appendPath = NULL, array $params = NULL) {
         /**
          * Build http[s]://hostname:port/buckets[/bucket[/keys[/key]]]
          */
@@ -195,31 +206,22 @@ abstract class Http extends \riiak\Transport {
         /**
          * Add bucket
          */
-        if (!is_null($bucket) && $bucket instanceof \riiak\Bucket) {
+        if (!is_null($bucket) && $bucket instanceof \riiak\Bucket)
             $path .= '/' . urlencode($bucket->name);
-
-            /**
-             * Add key
-             */
-            if (!is_null($key)) {
-                $path .= '/' . $this->client->keyPrefix . '/' . urlencode($key);
-
-                /**
-                 * Add params for link walking
-                 * bucket, tag, keep
-                 */
-                if (!is_null($links))
-                    foreach ($links as $el)
-                        $path .= '/' . urlencode($el[0]) . ',' . urlencode($el[1]) . ',' . $el[2];
-            }
-        }
 
         /**
          * Return constructed URL (Riak API Path)
          */
-        return $this->buildUri($path, $params);
+        return $this->buildUri($path . $appendPath, $params);
     }
 
+    /**
+     * Generic method for building uri
+     *
+     * @param string $path
+     * @param array $params optional
+     * @return string
+     */
     public function buildUri($path, array $params = NULL) {
         $path = $this->baseUrl() . $path;
 
@@ -284,7 +286,7 @@ abstract class Http extends \riiak\Transport {
      */
     public function getIsAlive() {
         Yii::trace('Pinging Riak server', 'ext.riiak.transport.http');
-        $response = $this->processRequest('GET', $this->baseUrl() . '/ping');
+        $response = $this->processRequest('GET', $this->buildUri('/'.$this->client->pingPrefix));
         return ($response != NULL) && ($response['body'] == 'OK');
     }
 
@@ -298,7 +300,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Construct URL
          */
-        $url = $this->buildBucketPath(null, null, null, array('buckets' => 'true'));
+        $url = $this->buildBucketPath(null, null, array('buckets' => 'true'));
 
         /**
          * Send request to fetch buckets.
@@ -353,7 +355,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Construct URL
          */
-        $url = $this->buildBucketPath($bucket, $key, null, $params);
+        $url = $this->buildBucketKeyPath($bucket, $key, null, $params);
 
         /**
          * Prepare response header
@@ -443,7 +445,7 @@ abstract class Http extends \riiak\Transport {
          * Check if the server is down (status==0)
          */
         if ($object->status == 0)
-            throw new Exception('Could not contact Riak Server: ' . $this->baseUrl($this->client) . '!');
+            throw new Exception('Could not contact Riak Server: ' . $this->baseUrl() . '!');
 
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
@@ -506,7 +508,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Get riak configuration
          */
-        $response = $this->processRequest('GET', $this->baseUrl() . '/stats');
+        $response = $this->processRequest('GET', $this->buildUri('/'.$this->client->statsPrefix));
         return CJSON::decode($response['body']);
     }
 

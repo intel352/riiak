@@ -61,7 +61,7 @@ class Riiak extends CApplicationComponent {
      *
      * @var string Default: 'index'
      */
-    public $secIndexPrefix = 'index';
+    public $indexPrefix = 'index';
 
     /**
      * Riak key stream prefix
@@ -76,6 +76,9 @@ class Riiak extends CApplicationComponent {
      * @var string Default: 'mapred'
      */
     public $mapredPrefix = 'mapred';
+
+    public $pingPrefix = 'ping';
+    public $statsPrefix = 'stats';
 
     /**
      * The clientID for this Riak client instance.

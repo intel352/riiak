@@ -46,6 +46,10 @@ class Object extends CComponent {
      * @var bool
      */
     public $jsonize = true;
+
+    /**
+     * @var array
+     */
     public $headers = array();
 
     /**
@@ -606,7 +610,7 @@ class Object extends CComponent {
          * Add the auto indexes
          */
         if (is_array($this->_autoIndexes) && !empty($this->_autoIndexes)) {
-            if(!is_array($this->data))
+            if (!is_array($this->data))
                 throw new Exception('Auto index feature requires that "$this->data" be an array.');
 
             $collisions = array();
@@ -708,11 +712,56 @@ class Object extends CComponent {
         $object->client->transport->populate($object, $object->bucket, $response, 'fetchObject');
 
         /**
+         * Parse the index and metadata headers
+         */
+        foreach ($object->headers as $key => $val) {
+            if (preg_match('~^x-riak-([^-]+)-(.+)$~', $key, $matches)) {
+                switch ($matches[1]) {
+                    case 'index':
+                        $index = substr($matches[2], 0, strrpos($matches[2], '_'));
+                        $type = substr($matches[2], strlen($index) + 1);
+                        $object->setIndex($index, array_map('urldecode', explode(', ', $val)), $type);
+                        break;
+                    case 'meta':
+                        $object->setMetaValue($matches[2], $val);
+                        break;
+                }
+            }
+        }
+
+        /**
          * If there are siblings, load the data for the first one by default
          */
         if ($object->getHasSiblings()) {
             $sibling = $this->getSibling(0);
             $object->data = $sibling->data;
+        }
+
+        /**
+         * Look for auto indexes and deindex explicit values if appropriate
+         */
+        if (isset($object->meta['client-autoindex'])) {
+            /**
+             * dereference the autoindexes
+             */
+            $object->autoIndexes = CJSON::decode($object->meta['client-autoindex']);
+            $collisions = isset($object->meta['client-autoindexcollision']) ? CJSON::decode($object->meta['client-autoindexcollision']) : array();
+
+            if (is_array($object->autoIndexes) && is_array($object->data))
+                foreach ($object->autoIndexes as $index => $fieldName) {
+                    $value = null;
+
+                    if (isset($object->data[$fieldName])) {
+                        $value = $object->data[$fieldName];
+                        /**
+                         * Only strip this value if not explicit index
+                         * @todo review logic
+                         */
+                        if (!(isset($collisions[$index]) && $collisions[$index] === $value))
+                            if ($value !== null)
+                                $object->removeIndex($index, null, $value);
+                    }
+                }
         }
 
         return $object;
@@ -756,6 +805,9 @@ class Object extends CComponent {
         $this->_data = null;
         $this->_exists = false;
         $this->siblings = null;
+        $this->_indexes = array();
+        $this->_autoIndexes = array();
+        $this->_meta = array();
         return $this;
     }
 
@@ -779,7 +831,7 @@ class Object extends CComponent {
         $linkHeaders = explode(',', trim($linkHeaders));
         foreach ($linkHeaders as $linkHeader)
             if (preg_match('/\<\/([^\/]+)\/([^\/]+)\/([^\/]+)\>; ?riaktag="([^"]+)"/', trim($linkHeader), $matches))
-                $this->_links[] = new Link($matches[2], $matches[3], $matches[4]);
+                $this->_links[] = new Link(urldecode($matches[2]), urldecode($matches[3]), urldecode($matches[4]));
 
         return $this;
     }

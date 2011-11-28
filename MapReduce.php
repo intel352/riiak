@@ -245,8 +245,7 @@ class MapReduce extends Backend {
          */
         Yii::trace('Running Map/Reduce query', 'ext.riiak.MapReduce');
 
-        $url = $this->client->transport->baseUrl($this->client) . '/' . $this->client->mapredPrefix;
-        $response = $this->client->transport->post($url, array(), $content);
+        $response = $this->client->transport->post($this->client->transport->buildMapReducePath(), array(), $content);
         $result = CJSON::decode($response['body']);
 
         /**
