@@ -11,6 +11,13 @@ use \CApplicationComponent,
  * Riak. The Riak API uses HTTP, so there is no persistent
  * connection, and the Riiak object is extremely lightweight.
  * @package riiak
+ *
+ * @property-read bool $isMultiBackendSupport
+ * @property-read bool $isSecondaryIndexSupport
+ * @property-read array $serverConfig Riak server configuration
+ * @property-read \riiak\Transport $transport Riiak Transport layer
+ * @property-read \riiak\MapReduce $mapReduce Map/Reduce object
+ * @property-read \riiak\SecondaryIndex $secondaryIndex Secondary Index object
  */
 class Riiak extends CApplicationComponent {
 
@@ -44,22 +51,22 @@ class Riiak extends CApplicationComponent {
 
     /**
      * Riak key stream url prefix
-     * 
-     * @var string Default: 'buckets' 
+     *
+     * @var string Default: 'buckets'
      */
     public $bucketPrefix = 'buckets';
 
     /**
      * Riak key for secondary indexes implementation
-     * 
-     * @var string Default: 'index' 
+     *
+     * @var string Default: 'index'
      */
     public $secIndexPrefix = 'index';
 
     /**
      * Riak key stream prefix
-     * 
-     * @var string 
+     *
+     * @var string
      */
     public $keyPrefix = 'keys';
 
@@ -116,41 +123,34 @@ class Riiak extends CApplicationComponent {
 
     /**
      *
-     * @var \riiak\SecondaryIndex 
+     * @var \riiak\SecondaryIndex
      */
     protected $_sIndex;
 
     /**
-     * Defines whether to use secondary index or not.
-     *  
-     * @var bool Default:false
-     */
-    public $_useSecondaryIndex = true;
-
-    /**
      * Riak configuration details
-     * 
-     * @var array 
+     *
+     * @var array
      */
-    public $_riakConfiguration;
+    protected $_serverConfig;
 
     /**
      * Transport layer object
-     * 
-     * @var \riiak\Transport 
+     *
+     * @var \riiak\Transport
      */
     protected $_transport;
 
     /**
      * Define transport layer protocol
-     * 
+     *
      * @var string Default: http
      */
     public $protocol = 'HTTP';
 
     /**
      * Define transport layer processing method.
-     * 
+     *
      * @var string Default: Curl
      */
     public $protocolMethod = 'CURL';
@@ -185,7 +185,7 @@ class Riiak extends CApplicationComponent {
     public function buckets() {
         Yii::trace('Fetching list of buckets', 'ext.riiak.Riiak');
         $buckets = array();
-        $buckets = $this->_transport->getBuckets($this);
+        $buckets = $this->transport->getBuckets($this);
         return $buckets;
     }
 
@@ -196,7 +196,7 @@ class Riiak extends CApplicationComponent {
      */
     public function getIsAlive() {
         Yii::trace('Pinging Riak server', 'ext.riiak.Riiak');
-        return $this->_transport->getBuckets($this);
+        return $this->transport->getBuckets($this);
     }
 
     /**
@@ -234,6 +234,17 @@ class Riiak extends CApplicationComponent {
     }
 
     /**
+     * Returns riak server configuration
+     *
+     * @return array
+     */
+    public function getServerConfig() {
+        if(!is_array($this->_serverConfig))
+            $this->_serverConfig = $this->getTransport()->getRiakConfiguration();
+        return $this->_serverConfig;
+    }
+
+    /**
      * Returns the MapReduce instance (created if not exists)
      *
      * @param bool $reset Whether to create a new MapReduce instance
@@ -251,30 +262,30 @@ class Riiak extends CApplicationComponent {
      * @param bool $reset Whether to create a new SecondaryIndex instance
      * @return \riiak\SecondaryIndex
      */
-    public function getSecondaryIndexObject($reset = false) {
-        if ($reset || !($this->_sIndex instanceof MapReduce))
+    public function getSecondaryIndex($reset = false) {
+        if ($reset || !($this->_sIndex instanceof SecondaryIndex))
             $this->_sIndex = new SecondaryIndex($this);
         return $this->_sIndex;
     }
 
     /**
      * Check whether riak supports multi-backend or not.
-     * 
+     *
      * @return bool
      */
     public function getIsMultiBackendSupport() {
         Yii::trace('Checking multi-backend support', 'ext.riiak.Riiak');
-        return $this->_transport->getIsMultiBackendSupport();
+        return $this->transport->getIsMultiBackendSupport();
     }
 
     /**
      *  Check whether riak supports secondary index or not.
-     * 
-     * @return bool 
+     *
+     * @return bool
      */
     public function getIsSecondaryIndexSupport() {
         Yii::trace('Checking Secondary Index support', 'ext.riiak.Riiak');
-        return $this->_transport->getIsSecondaryIndexSupport();
+        return $this->transport->getIsSecondaryIndexSupport();
     }
 
 }

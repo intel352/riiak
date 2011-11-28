@@ -49,8 +49,7 @@ class Bucket extends CComponent {
      * @var int
      */
     protected $_dw;
-    
-    
+
     public function __construct(Riiak $client, $name) {
         $this->client = $client;
         $this->name = $name;
@@ -279,12 +278,13 @@ class Bucket extends CComponent {
          * Construct the Contents
          */
         $content = CJSON::encode(array('props' => $props));
+
         /**
          * Run the request
          */
         Yii::trace('Setting Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
         $headers = array('Content-Type: application/json');
-        $response = $this->client->_transport->put($this, $headers, $content);
+        $response = $this->client->transport->put($this, $headers, $content);
 
         /**
          * Handle the response
@@ -298,7 +298,6 @@ class Bucket extends CComponent {
         $status = $response['statusCode'];
         if ($status != 204)
             throw new Exception('Error setting bucket properties.');
-        
     }
 
     /**
@@ -315,21 +314,20 @@ class Bucket extends CComponent {
      * Retrieve an array of all keys in this bucket
      * Note: this operation is pretty slow
      *
-     * @todo Add support for streamed keys, so that keys can be chunked in large buckets
-     *
      * @return array
      */
     public function getKeys() {
-        $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'));
+        /**
+         * Non-null key param will prompt format of /buckets/BUCKET/keys/
+         */
+        $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'), '');
         if (empty($obj->data['keys']))
             return array();
         return array_map('urldecode', array_unique($obj->data['keys']));
     }
-    
-    
 
     /**
-     * Fetches bucket
+     * Fetches bucket properties
      *
      * @param array $params
      * @param string $key
@@ -341,17 +339,57 @@ class Bucket extends CComponent {
          * Run the request
          */
         Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = $this->client->_transport->get($this, $params, $key, $spec);
+        $response = $this->client->transport->get($this, $params, $key, $spec);
+
         /**
          * Use a Object to interpret the response, we are just interested in the value
          */
         $obj = new Object($this->client, $this);
-        $this->client->_transport->populate($obj, $this, $response, 'getBucketProperties');
-        
+        $this->client->transport->populate($obj, $this, $response, 'getBucketProperties');
+
         if (!$obj->exists)
             throw new Exception('Error getting bucket properties.');
-        
+
         return $obj;
+    }
+
+    /**
+     * Search a secondary index
+     * @author Eric Stevens <estevens@taglabsinc.com>
+     * @param string $name - The name of the index to search
+     * @param string $type - The type of index ('int' or 'bin')
+     * @param string|int $startOrExact
+     * @param string|int $end optional
+     * @param bool $dedupe - whether to eliminate duplicate entries if any
+     * @return array of Links
+     */
+    public function indexSearch($name, $type, $startOrExact, $end = NULL, $dedupe = false) {
+        /**
+         * @todo Replace references to riakutils
+         */
+        $url = RiakUtils::buildIndexPath($this->client, $this, $name . '_' . $type, $startOrExact, $end, NULL);
+        $response = RiakUtils::httpRequest('GET', $url);
+
+        $obj = Object::populateResponse(new Object($this->client, $this), $response);
+        if (!$obj->exists)
+            throw new Exception('Error searching index.');
+
+        $data = $obj->data;
+        $keys = array_map('urldecode', $data['keys']);
+
+        /**
+         * Combo of array_keys+array_flip is faster than array_unique
+         */
+        if ($dedupe)
+            $keys = array_keys(array_flip($keys));
+
+        array_walk($keys, array($this, 'inflateLinkCallback'));
+        return $keys;
+    }
+
+    protected function inflateLinkCallback(&$key, $k) {
+        $key = new Link($this->name, $key);
+        $key->client = $this->client;
     }
 
 }

@@ -61,7 +61,7 @@ class Object extends CComponent {
      *
      * @var bool
      */
-    public $_exists = false;
+    protected $_exists = false;
 
     /**
      * If constructed by newBinary|getBinary, returns string.
@@ -69,7 +69,22 @@ class Object extends CComponent {
      *
      * @var mixed
      */
-    public $_data;
+    protected $_data;
+
+    /**
+     * @var array
+     */
+    protected $_meta = array();
+
+    /**
+     * @var array
+     */
+    protected $_indexes = array();
+
+    /**
+     * @var array
+     */
+    protected $_autoIndexes = array();
 
     /**
      * Construct a new Object
@@ -134,12 +149,23 @@ class Object extends CComponent {
     }
 
     /**
-     * Whether the object exists
+     * Get whether the object exists
      *
      * @return bool
      */
     public function getExists() {
         return $this->_exists;
+    }
+
+    /**
+     * Set whether the object exists
+     *
+     * @param bool $bool
+     * @return Object
+     */
+    public function setExists($bool) {
+        $this->_exists = (bool) $bool;
+        return $this;
     }
 
     /**
@@ -192,7 +218,347 @@ class Object extends CComponent {
          */
         foreach ($this->_links as $link)
             $link->client = $this->client;
+
         return $this->_links;
+    }
+
+    /** @section Indexes */
+
+    /**
+     * @param type $array
+     * @param type $name
+     * @param type $value
+     * @param type $type
+     * @return Object
+     */
+    protected function _addIndex(&$array, $name, $value, $type = null) {
+        $index = strtolower($name . ($type !== null ? '_' . $type : ''));
+        if (!isset($array[$index]))
+            $array[$index] = array();
+
+        /**
+         * Riak de-dupes, but _addIndex is also used for autoIndex management
+         */
+        if (!in_array($value, $array[$index]))
+            $array[$index][] = $value;
+
+        return $this;
+    }
+
+    /**
+     * @param array $array
+     * @param type $name
+     * @param type $value
+     * @param type $type
+     * @return Object
+     */
+    protected function _setIndex(&$array, $name, $value, $type = null) {
+        $index = strtolower($name . ($type !== null ? '_' . $type : ''));
+
+        $array[$index] = $value;
+
+        return $this;
+    }
+
+    /**
+     * @param type $array
+     * @param type $name
+     * @param type $type
+     * @return bool
+     */
+    protected function _hasIndex(&$array, $name, $type = null) {
+        $index = strtolower($name . ($type !== null ? '_' . $type : ''));
+        return isset($array[$index]);
+    }
+
+    /**
+     * @param type $array
+     * @param type $name
+     * @param type $type
+     * @return mixed
+     */
+    protected function _getIndex(&$array, $name, $type = null) {
+        $index = strtolower($name . ($type !== null ? '_' . $type : ''));
+
+        if (!isset($array[$index]))
+            return null;
+
+        return $array[$index];
+    }
+
+    /**
+     * @param type $array
+     * @param type $name
+     * @param type $type
+     * @param type $value
+     * @return Object
+     */
+    protected function _removeIndex(&$array, $name, $type = null, $value = null) {
+        $index = strtolower($name . ($type !== null ? '_' . $type : ''));
+
+        if (isset($array[$index]))
+            if ($value !== null) {
+                if (is_array($array[$index]) && false !== ($position = array_search($value, $array[$index])))
+                    unset($array[$index][$position]);
+            }else
+                unset($array[$index]);
+
+        return $this;
+    }
+
+    /**
+     * @param array $array
+     * @param type $name
+     * @param type $type
+     * @return Object
+     */
+    protected function _removeAllIndexes(&$array, $name = null, $type = null) {
+        if ($name === null)
+            $array = array();
+        else if ($type !== null)
+            unset($array[strtolower($name . '_' . $type)]);
+        else {
+            $name = strtolower($name);
+            unset($array[$name . '_int']);
+            unset($array[$name . '_bin']);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Adds a secondary index to the object
+     * This will create the index if it does not exist, or will
+     * append an additional value if the index already exists and
+     * does not contain the provided value.
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     * @param string|int $explicitValue optional If provided, uses this
+     * value explicitly.  If not provided, this will search the object's
+     * data for a data field named $name, and use it's value.
+     * @return $this
+     */
+    public function addIndex($name, $type = null, $explicitValue = null) {
+        if ($explicitValue === null)
+            return $this->addAutoIndex($name, $type);
+
+        return $this->_addIndex($this->_indexes, $name, $explicitValue, $type);
+    }
+
+    /**
+     * Sets a given index to a specific value or set of values
+     * @param string $name
+     * @param array|string|int $value
+     * @param 'int'|'bin' $type optional
+     * @return $this
+     */
+    public function setIndex($name, $value, $type = null) {
+        return $this->_setIndex($this->_indexes, $name, $value, $type);
+    }
+
+    /**
+     * @param type $name
+     * @param type $type
+     * @return bool
+     */
+    public function hasIndex($name, $type = null) {
+        return $this->_hasIndex($this->_indexes, $name, $type);
+    }
+
+    /**
+     * Gets the current values for the identified index
+     * Note, the NULL value has special meaning - when the object is
+     * ->store()d, this value will be replaced with the current value
+     * the value of the field matching $indexName from the object's data
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     */
+    public function getIndex($name, $type = null) {
+        return $this->_getIndex($this->_indexes, $name, $type);
+    }
+
+    /**
+     * @param type $value
+     * @return Object
+     */
+    public function setIndexes($value) {
+        $this->_indexes = $value;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getIndexes() {
+        return $this->_indexes;
+    }
+
+    /**
+     * Removes a specific value from a given index
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     * @param string|int $explicitValue optional
+     * @return $this
+     */
+    public function removeIndex($name, $type = null, $explicitValue = null) {
+        return $this->_removeIndex($this->_indexes, $name, $type, $explicitValue);
+    }
+
+    /**
+     * Bulk index removal
+     * If $indexName and $indexType are provided, all values for the
+     * identified index are removed.
+     * If just $indexName is provided, all values for all types of
+     * the identified index are removed
+     * If neither is provided, all indexes are removed from the object
+     *
+     * Note that this function will NOT affect auto indexes
+     *
+     * @param string $name optional
+     * @param 'int'|'bin' $type optional
+     *
+     * @return $this
+     */
+    public function removeAllIndexes($name = null, $type = null) {
+        return $this->_removeAllIndexes($this->_indexes, $name, $type);
+    }
+
+    /** @section Auto Indexes */
+
+    /**
+     * Adds an automatic secondary index to the object
+     * The value of an automatic secondary index is determined at
+     * time of ->store() by looking for an $fieldName key
+     * in the object's data.
+     *
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     *
+     * @return $this
+     */
+    public function addAutoIndex($name, $type = null) {
+        return $this->_setIndex($this->_autoIndexes, $name, $name, $type);
+    }
+
+    /**
+     * Returns whether the object has a given auto index
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     *
+     * @return boolean
+     */
+    public function hasAutoIndex($name, $type = null) {
+        return $this->_hasIndex($this->_autoIndexes, $name, $type);
+    }
+
+    /**
+     * @param type $value
+     * @return Object
+     */
+    public function setAutoIndexes($value) {
+        $this->_autoIndexes = $value;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getAutoIndexes() {
+        return $this->_autoIndexes;
+    }
+
+    /**
+     * Removes a given auto index from the object
+     *
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     *
+     * @return $this
+     */
+    public function removeAutoIndex($name, $type = null) {
+        return $this->_removeIndex($this->_autoIndexes, $name, $type);
+    }
+
+    /**
+     * Removes all auto indexes
+     * If $fieldName is not provided, all auto indexes on the
+     * object are stripped, otherwise just indexes on the given field
+     * are stripped.
+     * If $indexType is not provided, all types of index for the
+     * given field are stripped, otherwise just a given type is stripped.
+     *
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     *
+     * @return $this
+     */
+    public function removeAllAutoIndexes($name = null, $type = null) {
+        return $this->_removeAllIndexes($this->_autoIndexes, $name, $type);
+    }
+
+    /** @section Meta Data */
+
+    /**
+     * Gets a given metadata value
+     * Returns null if no metadata value with the given name exists
+     *
+     * @param string $metaName
+     *
+     * @return string|null
+     */
+    public function getMetaValue($metaName) {
+        $metaName = strtolower($metaName);
+        if (isset($this->_meta[$metaName]))
+            return $this->_meta[$metaName];
+        return null;
+    }
+
+    /**
+     * Sets a given metadata value, overwriting an existing
+     * value with the same name if it exists.
+     * @param string $metaName
+     * @param string $value
+     * @return $this
+     */
+    public function setMetaValue($metaName, $value) {
+        $this->_meta[strtolower($metaName)] = $value;
+        return $this;
+    }
+
+    /**
+     * Removes a given metadata value
+     * @param string $metaName
+     * @return $this
+     */
+    public function removeMetaValue($metaName) {
+        unset($this->_meta[strtolower($metaName)]);
+        return $this;
+    }
+
+    /**
+     * Gets all metadata values
+     * @return array<string>=string
+     */
+    public function getMeta() {
+        return $this->_meta;
+    }
+
+    /**
+     * @param array $value
+     * @return Object
+     */
+    public function setMeta(array $value) {
+        $this->_meta = $value;
+        return $this;
+    }
+
+    /**
+     * Strips all metadata values
+     * @return $this
+     */
+    public function removeMeta() {
+        $this->_meta = array();
+        return $this;
     }
 
     /**
@@ -215,7 +581,7 @@ class Object extends CComponent {
          * Construct the URL
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
-        $url = $this->client->_transport->buildRestPath($this->client, $this->bucket, $this->key, null, $params);
+        $url = $this->client->transport->buildBucketPath($this->client, $this->bucket, $this->key, null, $params);
 
         /**
          * Construct the headers
@@ -236,22 +602,63 @@ class Object extends CComponent {
         foreach ($this->_links as $link)
             $headers[] = 'Link: ' . $link->toLinkHeader($this->client);
 
-        if ($this->jsonize)
-            $content = CJSON::encode($this->_data);
-        else
-            $content = $this->_data;
+        /**
+         * Add the auto indexes
+         */
+        if (is_array($this->_autoIndexes) && !empty($this->_autoIndexes)) {
+            if(!is_array($this->data))
+                throw new Exception('Auto index feature requires that "$this->data" be an array.');
 
-        $method = $this->key ? 'PUT' : 'POST';
+            $collisions = array();
+            foreach ($this->_autoIndexes as $index => $fieldName) {
+                $value = null;
+                // look up the value
+                if (isset($this->data[$fieldName])) {
+                    $value = $this->data[$fieldName];
+                    $headers[] = 'X-Riak-Index-' . $index . ': ' . urlencode($value);
+
+                    // look for value collisions with normal indexes
+                    if (isset($this->_indexes[$index]))
+                        if (false !== array_search($value, $this->_indexes[$index]))
+                            $collisions[$index] = $value;
+                }
+            }
+
+            $this->_meta['client-autoindex'] = count($this->_autoIndexes) > 0 ? CJSON::encode($this->_autoIndexes) : null;
+            $this->_meta['client-autoindexcollision'] = count($collisions) > 0 ? CJSON::encode($collisions) : null;
+        }
+
+        /**
+         * Add the indexes
+         */
+        foreach ($this->_indexes as $index => $values)
+            if ($values !== null)
+                $headers[] = 'X-Riak-Index-' . $index . ': ' . (is_array($values) ? implode(', ', array_map('urlencode', $values)) : urlencode($values));
+
+        /**
+         * Add the metadata
+         */
+        foreach ($this->_meta as $metaName => $metaValue)
+            if ($metaValue !== null)
+                $headers[] = 'X-Riak-Meta-' . $metaName . ': ' . $metaValue;
+
+        if ($this->jsonize)
+            $content = CJSON::encode($this->data);
+        else
+            $content = $this->data;
+
         /**
          * Run the operation
          */
-        Yii::trace('Storing object "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        if($this->key){
-            $response = $this->client->_transport->put($this->bucket, $headers, $content, $url);
-        }else{
-            $response = $this->client->_transport->post($url, $headers, $content);
+        if ($this->key) {
+            Yii::trace('Storing object with key "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+            $response = $this->client->transport->put($this->bucket, $headers, $content, $url);
+        } else {
+            Yii::trace('Storing new object in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
+            $response = $this->client->transport->post($url, $headers, $content);
         }
-        $this->client->_transport->populate($this, $this->bucket, $response, 'storeObject');
+
+        $this->client->transport->populate($this, $this->bucket, $response, 'storeObject');
         return $this;
     }
 
@@ -269,17 +676,18 @@ class Object extends CComponent {
          */
         $params = array('r' => $this->bucket->getR($r));
         Yii::trace('Reloading object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->_transport->get($this->bucket, $params, $this->key, null);
+        $response = $this->client->transport->get($this->bucket, $params, $this->key, null);
         return self::populateResponse($this, $response);
     }
 
     public static function reloadMulti(Riiak $client, array $objects, $r = null) {
         Yii::trace('Reloading multiple objects', 'ext.riiak.Object');
         $objects = array_combine(array_map(array('self', 'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
+
         /**
          * Get (fetch) multiple objects
          */
-        $responses = $client->_transport->multiGet(array_keys($objects));
+        $responses = $client->transport->multiGet(array_keys($objects));
         array_walk($objects, function(&$object, $url)use(&$responses) {
                     Object::populateResponse($object, $responses[$url]);
                 });
@@ -288,18 +696,23 @@ class Object extends CComponent {
 
     protected static function buildReloadUrl(Object $object, $r = null) {
         $params = array('r' => $object->bucket->getR($r));
-        return $object->client->_transport->buildRestPath($object->bucket, $object->key, null, $params);
+        return $object->client->transport->buildBucketPath($object->bucket, $object->key, null, $params);
     }
 
+    /**
+     * @param Object $object
+     * @param array $response
+     * @return Object
+     */
     public static function populateResponse(Object &$object, $response) {
-        $object->client->_transport->populate($object, $object->bucket, $response, 'fetchObject');
+        $object->client->transport->populate($object, $object->bucket, $response, 'fetchObject');
 
         /**
          * If there are siblings, load the data for the first one by default
          */
         if ($object->getHasSiblings()) {
-            $obj = $this->getSibling(0);
-            $object->_data = $obj->data;
+            $sibling = $this->getSibling(0);
+            $object->data = $sibling->data;
         }
 
         return $object;
@@ -321,12 +734,13 @@ class Object extends CComponent {
          * Construct the URL
          */
         $params = array('dw' => $dw);
+
         /**
          * Run the operation
          */
         Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->_transport->delete($this->bucket, $this->key, $params, '' );
-        $this->client->_transport->populate($this, $this->bucket, $response, 'deleteObject');
+        $response = $this->client->transport->delete($this->bucket, $this->key, $params, '');
+        $this->client->transport->populate($this, $this->bucket, $response, 'deleteObject');
 
         return $this;
     }
@@ -353,10 +767,9 @@ class Object extends CComponent {
     protected function getVclock() {
         if (array_key_exists('x-riak-vclock', $this->headers))
             return $this->headers['x-riak-vclock'];
-        else
-            return null;
+        return null;
     }
-    
+
     /**
      * Populate object links
      *
@@ -407,16 +820,16 @@ class Object extends CComponent {
          */
         $vtag = $this->siblings[$i];
         $params = array('r' => $r, 'vtag' => $vtag);
-        
+
         Yii::trace('Fetching sibling "' . $i . '" of object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->_transport->get($this->bucket, $params, $this->key, null);
+        $response = $this->client->transport->get($this->bucket, $params, $this->key, null);
 
         /**
          * Respond with a new object
          */
         $obj = new Object($this->client, $this->bucket, $this->key);
         $obj->jsonize = $this->jsonize;
-        $this->client->_transport->populate($obj, $this->bucket, $response, 'getSibling');
+        $this->client->transport->populate($obj, $this->bucket, $response, 'getSibling');
         return $obj;
     }
 
@@ -428,9 +841,9 @@ class Object extends CComponent {
      */
     public function getSiblings($r = null) {
         $a = array();
-        for ($i = 0; $i < $this->getSiblingCount(); $i++) {
+        for ($i = 0; $i < $this->getSiblingCount(); $i++)
             $a[] = $this->getSibling($i, $r);
-        }
+
         return $a;
     }
 
@@ -443,15 +856,15 @@ class Object extends CComponent {
     public function getMapReduce($reset = false) {
         return $this->client->getMapReduce($reset);
     }
-    
+
     /**
      * Returns a SecondaryIndex instance
      *
      * @param bool $reset Whether to create a new SecondaryIndex instance
      * @return \riiak\SecondaryIndex
      */
-    public function getSecondaryIndexObject($reset = false) {
-        return $this->client->getSecondaryIndexObject($reset);
+    public function getSecondaryIndex($reset = false) {
+        return $this->client->getSecondaryIndex($reset);
     }
 
 }
