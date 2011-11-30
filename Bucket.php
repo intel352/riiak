@@ -195,14 +195,14 @@ class Bucket extends CComponent {
     public function getMultiBinary(array $keys, $r = null, $jsonize = false) {
         $bucket = $this;
         $client = $this->client;
-        $object = new Object($client, $bucket);
+        
         $objects = array_map(function($key)use($jsonize, $client, $bucket) {
                     $obj = new Object($client, $bucket, $key);
                     $obj->jsonize = $jsonize;
                     return $obj;
                 }, $keys);
         $r = $this->getR($r);
-        return $object->reloadMulti($client, $objects, $r);
+        return Object::reloadMulti($client, $objects, $r);
     }
 
     /**
@@ -295,15 +295,7 @@ class Bucket extends CComponent {
         
         if (!$obj->exists)
             throw new Exception('Error setting bucket properties.');
-
-        /**
-         * Check the response value
-         * @todo - Will remove it once confirmed it with Jon
-         */
-        /*$status = $response['statusCode'];
-        if ($status != 204)
-            throw new Exception('Error setting bucket properties.');*/
-        
+       
     }
 
     /**
