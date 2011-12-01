@@ -284,7 +284,7 @@ class Bucket extends CComponent {
          */
         Yii::trace('Setting Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
         $headers = array('Content-Type: application/json');
-        $response = $this->client->transport->put($this, $headers, $content);
+        $response = $this->client->transport->putObject($this, $headers, $content);
 
         /**
          * Use a Object to interpret the response, we are just interested in the value
@@ -299,9 +299,9 @@ class Bucket extends CComponent {
          * Check the response value
          * @todo - Will remove it once confirmed it with Jon
          */
-        /*$status = $response['statusCode'];
-        if ($status != 204)
-            throw new Exception('Error setting bucket properties.');*/
+        /* $status = $response['statusCode'];
+          if ($status != 204)
+          throw new Exception('Error setting bucket properties.'); */
     }
 
     /**
@@ -343,7 +343,7 @@ class Bucket extends CComponent {
          * Run the request
          */
         Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $response = $this->client->transport->get($this, $params, $key, $spec);
+        $response = $this->client->transport->getObject($this, $params, $key, $spec);
 
         /**
          * Use a Object to interpret the response, we are just interested in the value
@@ -368,11 +368,8 @@ class Bucket extends CComponent {
      * @return array of Links
      */
     public function indexSearch($name, $type, $startOrExact, $end = NULL, $dedupe = false) {
-        /**
-         * @todo Replace references to riakutils
-         */
-        $url = RiakUtils::buildIndexPath($this->client, $this, $name . '_' . $type, $startOrExact, $end, NULL);
-        $response = RiakUtils::httpRequest('GET', $url);
+        $url = $this->client->transport->buildBucketIndexPath($this, $name.'_'.$type, $startOrExact, $end);
+        $response = $this->client->transport->get($url);
 
         $obj = Object::populateResponse(new Object($this->client, $this), $response);
         if (!$obj->exists)

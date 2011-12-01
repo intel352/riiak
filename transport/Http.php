@@ -13,6 +13,11 @@ use \CJSON,
  * @package riiak.transport
  *
  * @abstract
+ *
+ * @method array get() get(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('GET', ...)
+ * @method array post() post(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('POST', ...)
+ * @method array put() put(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('PUT', ...)
+ * @method array delete() delete(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('DELETE', ...)
  */
 abstract class Http extends \riiak\Transport {
 
@@ -20,6 +25,26 @@ abstract class Http extends \riiak\Transport {
      * @var http\Status
      */
     public $status;
+
+    public function __call($name, $parameters) {
+        /**
+         * Adding magic support for transport->get|post|put|delete
+         */
+        switch ($name) {
+            case 'get':
+            case 'post':
+            case 'put':
+            case 'delete':
+                /**
+                 * Process request.
+                 */
+                array_unshift($parameters, strtoupper($name));
+                return call_user_func_array(array($this, 'processRequest'), $parameters);
+                break;
+        }
+
+        return parent::__call($name, $parameters);
+    }
 
     /**
      * Get status handling class object
@@ -62,13 +87,16 @@ abstract class Http extends \riiak\Transport {
     /**
      * Get (fetch) an object
      *
+     * This is renamed from "get", as "get" should be a generic function...
+     * @todo Function is in dire need of refactoring
+     *
      * @param \riiak\Bucket $bucket
      * @param array $params
      * @param string $key
      * @param string $spec
      * @return array
      */
-    public function get(\riiak\Bucket $bucket = NULL, array $params = array(), $key = null, $spec = null) {
+    public function getObject(\riiak\Bucket $bucket = NULL, array $params = array(), $key = null, $spec = null) {
         /**
          * Construct the URL
          */
@@ -94,13 +122,15 @@ abstract class Http extends \riiak\Transport {
     /**
      * Put (save) an object
      *
+     * This is renamed from "put", as "put" should be a generic function...
+     *
      * @param \riiak\Bucket $bucket
      * @param string $headers
-     * @param string $contents
+     * @param string $content
      * @param string $url
      * @return array $response
      */
-    public function put(\riiak\Bucket $bucket = NULL, $headers = NULL, $contents = '', $url = '') {
+    public function putObject(\riiak\Bucket $bucket = NULL, $headers = NULL, $content = '', $url = '') {
         /**
          * Construct the request URL.
          */
@@ -110,12 +140,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Process request.
          */
-        $response = $this->processRequest('PUT', $url, $headers, $contents);
-
-        /**
-         * Set status code
-         */
-        $response['statusCode'] = $response['headers']['http_code'];
+        $response = $this->processRequest('PUT', $url, $headers, $content);
 
         /**
          * Return Riak response
@@ -241,15 +266,15 @@ abstract class Http extends \riiak\Transport {
      * @param string $method GET|POST|PUT|DELETE
      * @param string $url
      * @param array $requestHeaders
-     * @param string $obj
+     * @param string $content
      * @return array
      */
-    public function processRequest($method, $url, array $requestHeaders = array(), $obj = '') {
+    public function processRequest($method, $url, array $requestHeaders = array(), $content = '') {
         try {
             /**
              * Process http request using processing method (Curl,fopen etc).
              */
-            $responseData = $this->sendRequest($method, $url, $requestHeaders, $obj);
+            $responseData = $this->sendRequest($method, $url, $requestHeaders, $content);
 
             /**
              * Get headers
@@ -286,7 +311,7 @@ abstract class Http extends \riiak\Transport {
      */
     public function getIsAlive() {
         Yii::trace('Pinging Riak server', 'ext.riiak.transport.http');
-        $response = $this->processRequest('GET', $this->buildUri('/'.$this->client->pingPrefix));
+        $response = $this->processRequest('GET', $this->buildUri('/' . $this->client->pingPrefix));
         return ($response != NULL) && ($response['body'] == 'OK');
     }
 
@@ -322,36 +347,15 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * @param string $url
-     * @param array $params
-     * @param string $headers
-     * @return array
-     */
-    public function post($url = NULL, array $params = array(), $headers = '') {
-        /**
-         * Process request.
-         */
-        $response = $this->processRequest('POST', $url, $params, $headers);
-
-        /**
-         * Set status code
-         */
-        $response['statusCode'] = $response['headers']['http_code'];
-
-        /**
-         * Return response
-         */
-        return $response;
-    }
-
-    /**
+     * This is renamed from "delete", as "delete" should be a generic function...
+     *
      * @param \riiak\Bucket $bucket
      * @param string $key
      * @param array $params
      * @param string $headers
      * @return array
      */
-    public function delete(\riiak\Bucket $bucket = NULL, $key = '', array $params = array(), $headers = '') {
+    public function deleteObject(\riiak\Bucket $bucket = NULL, $key = '', array $params = array(), $headers = '') {
         /**
          * Construct URL
          */
@@ -366,11 +370,6 @@ abstract class Http extends \riiak\Transport {
          * Process request.
          */
         $response = $this->processRequest('DELETE', $url);
-
-        /**
-         * Set status code
-         */
-        $response['statusCode'] = $response['headers']['http_code'];
 
         /**
          * Return response
@@ -508,7 +507,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Get riak configuration
          */
-        $response = $this->processRequest('GET', $this->buildUri('/'.$this->client->statsPrefix));
+        $response = $this->processRequest('GET', $this->buildUri('/' . $this->client->statsPrefix));
         return CJSON::decode($response['body']);
     }
 

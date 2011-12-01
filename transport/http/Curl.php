@@ -22,10 +22,10 @@ class Curl extends \riiak\transport\Http {
      * @param string $method
      * @param string $url
      * @param array $requestHeaders
-     * @param string $obj
+     * @param string $content
      * @return string
      */
-    public function buildCurlOpts($method, $url, array $requestHeaders = array(), $obj = '') {
+    public function buildCurlOpts($method, $url, array $requestHeaders = array(), $content = '') {
         $curlOptions = array(
             CURLOPT_URL => $url,
             CURLOPT_HTTPHEADER => $requestHeaders,
@@ -36,13 +36,13 @@ class Curl extends \riiak\transport\Http {
                 break;
             case 'POST':
                 $curlOptions[CURLOPT_POST] = 1;
-                $curlOptions[CURLOPT_POSTFIELDS] = $obj;
+                $curlOptions[CURLOPT_POSTFIELDS] = $content;
                 break;
             /**
              * PUT/DELETE both declare CUSTOMREQUEST, thus no break after PUT
              */
             case 'PUT':
-                $curlOptions[CURLOPT_POSTFIELDS] = $obj;
+                $curlOptions[CURLOPT_POSTFIELDS] = $content;
             case 'DELETE':
                 $curlOptions[CURLOPT_CUSTOMREQUEST] = $method;
                 break;
@@ -72,15 +72,15 @@ class Curl extends \riiak\transport\Http {
      * @param string $method
      * @param string $url
      * @param array $requestHeaders
-     * @param object $obj
+     * @param string $content
      * @return array|null
      */
-    public function sendRequest($method, $url, array $requestHeaders = array(), $obj = '') {
+    public function sendRequest($method, $url, array $requestHeaders = array(), $content = '') {
         /**
          * Init curl
          */
         $ch = curl_init();
-        $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $obj);
+        $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $content);
 
         if ($this->client->enableProfiling)
             $profileToken = 'ext.riiak.transport.http.curl.sendRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
@@ -159,17 +159,17 @@ class Curl extends \riiak\transport\Http {
      *
      * @param array $urls
      * @param array $requestHeaders
-     * @param Object $obj
+     * @param Object $content
      * @return array
      */
-    public function multiGet(array $urls, array $requestHeaders = array(), $obj = '') {
+    public function multiGet(array $urls, array $requestHeaders = array(), $content = '') {
         /**
          * Init multi-curl
          */
         $mh = curl_multi_init();
-        $curlOpts = $this->buildCurlOpts('GET', '', $requestHeaders, $obj);
+        $curlOpts = $this->buildCurlOpts('GET', '', $requestHeaders, $content);
 
-        Yii::trace('Executing HTTP Multi ' . $method . ': ' . \CVarDumper::dumpAsString($urls) . ($obj ? ' with content "' . $obj . '"' : ''), 'ext.Transport.Http.Curl');
+        Yii::trace('Executing HTTP Multi ' . $method . ': ' . \CVarDumper::dumpAsString($urls) . ($content ? ' with content "' . $content . '"' : ''), 'ext.Transport.Http.Curl');
         if ($this->client->enableProfiling)
             $profileToken = 'ext.riiak.transport.http.curl.multiGet(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 

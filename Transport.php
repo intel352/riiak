@@ -69,7 +69,7 @@ abstract class Transport extends CComponent {
      * @param string $spec
      * @return array
      */
-    abstract public function get(Bucket $bucket = NULL, array $params = array(), $key = null, $spec = null);
+    #abstract public function get(Bucket $bucket = NULL, array $params = array(), $key = null, $spec = null);
 
     /**
      * Get (fetch) multiple objects
@@ -86,7 +86,7 @@ abstract class Transport extends CComponent {
      * @param array $params
      * @return array $response
      */
-    abstract public function put(Bucket $bucket = NULL, $headers = NULL, $contents = '');
+    #abstract public function put(Bucket $bucket = NULL, $headers = NULL, $contents = '');
 
     /**
      * Method to store object in Riak.
@@ -96,7 +96,7 @@ abstract class Transport extends CComponent {
      * @param string $headers
      * @return array
      */
-    abstract public function post($url = NULL, array $params = array(), $headers = '');
+    #abstract public function post($url = NULL, array $params = array(), $headers = '');
 
     /**
      * Method to delete object in Riak.
@@ -106,7 +106,7 @@ abstract class Transport extends CComponent {
      * @param string $headers
      * @return array
      */
-    abstract public function delete(Bucket $bucket = NULL, $key = '', array $params = array(), $headers = '');
+    #abstract public function delete(Bucket $bucket = NULL, $key = '', array $params = array(), $headers = '');
 
     /**
      * Executes request, returns named array(headers, body) of request, or null on error

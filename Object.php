@@ -656,7 +656,7 @@ class Object extends CComponent {
          */
         if ($this->key) {
             Yii::trace('Storing object with key "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-            $response = $this->client->transport->put($this->bucket, $headers, $content, $url);
+            $response = $this->client->transport->putObject($this->bucket, $headers, $content, $url);
         } else {
             Yii::trace('Storing new object in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
             $response = $this->client->transport->post($url, $headers, $content);
@@ -680,7 +680,7 @@ class Object extends CComponent {
          */
         $params = array('r' => $this->bucket->getR($r));
         Yii::trace('Reloading object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->transport->get($this->bucket, $params, $this->key, null);
+        $response = $this->client->transport->getObject($this->bucket, $params, $this->key, null);
         return self::populateResponse($this, $response);
     }
 
@@ -788,7 +788,7 @@ class Object extends CComponent {
          * Run the operation
          */
         Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->transport->delete($this->bucket, $this->key, $params, '');
+        $response = $this->client->transport->deleteObject($this->bucket, $this->key, $params, '');
         $this->client->transport->populate($this, $this->bucket, $response, 'deleteObject');
 
         return $this;
@@ -874,7 +874,7 @@ class Object extends CComponent {
         $params = array('r' => $r, 'vtag' => $vtag);
 
         Yii::trace('Fetching sibling "' . $i . '" of object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->transport->get($this->bucket, $params, $this->key, null);
+        $response = $this->client->transport->getObject($this->bucket, $params, $this->key, null);
 
         /**
          * Respond with a new object
