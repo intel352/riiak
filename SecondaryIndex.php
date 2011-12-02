@@ -244,8 +244,7 @@ class SecondaryIndex extends Backend {
         foreach($arrKeys as $index => $value){
             $arrOutputKeys[] = array(
                 'key' => $value,
-                'container' => $strBucket,
-                'data' => ''
+                'container' => $strBucket                
             );
         }
         return $arrOutputKeys;
