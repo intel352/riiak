@@ -72,14 +72,6 @@ abstract class Transport extends CComponent {
     #abstract public function get(Bucket $bucket = NULL, array $params = array(), $key = null, $spec = null);
 
     /**
-     * Get (fetch) multiple objects
-     * @param array $urls
-     * @param array $requestHeaders
-     * @param string $obj
-     */
-    abstract public function multiGet(array $urls, array $requestHeaders = array(), $obj = '');
-
-    /**
      * Put (save) an object
      *
      * @param \riiak\Bucket $bucket

@@ -50,6 +50,16 @@ class Bucket extends CComponent {
      */
     protected $_dw;
 
+    /**
+     * @var array
+     */
+    protected $_properties;
+
+    /**
+     * @var array
+     */
+    protected $_keys;
+
     public function __construct(Riiak $client, $name) {
         $this->client = $client;
         $this->name = $name;
@@ -140,7 +150,7 @@ class Bucket extends CComponent {
      * @param mixed $data optional Data to store (Default: null)
      * @return \riiak\Object
      */
-    public function newObject($key=null, $data = null) {
+    public function newObject($key = null, $data = null) {
         return $this->newBinary($key, $data, 'application/json', true);
     }
 
@@ -272,6 +282,7 @@ class Bucket extends CComponent {
      * what you're doing
      *
      * @param array $props An associative array of $key=>$value
+     * @return Bucket
      */
     public function setProperties(array $props) {
         /**
@@ -295,42 +306,45 @@ class Bucket extends CComponent {
         if (!$obj->exists)
             throw new Exception('Error setting bucket properties.');
 
-        /**
-         * Check the response value
-         * @todo - Will remove it once confirmed it with Jon
-         */
-        /* $status = $response['statusCode'];
-          if ($status != 204)
-          throw new Exception('Error setting bucket properties.'); */
+        $this->_properties = null;
+
+        return $this;
     }
 
     /**
      * Retrieve an associative array of all bucket properties
      *
+     * @param bool $refresh
      * @return array
      */
-    public function getProperties() {
-        Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $obj = $this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'));
-        return $obj->data['props'];
+    public function getProperties($refresh = false) {
+        if ($refresh || $this->_properties == null) {
+            Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+            $this->_properties = $this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'))->data['props'];
+        }
+        return $this->_properties;
     }
 
     /**
      * Retrieve an array of all keys in this bucket
      * Note: this operation is pretty slow
      *
+     * @param bool $refresh
      * @return array
      */
-    public function getKeys() {
-        Yii::log('Bucket key listing is a very intensive operation, and should never occur in production!', \CLogger::LEVEL_WARNING);
-        Yii::trace('Fetching Bucket keys for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        /**
-         * Non-null key param will prompt format of /buckets/BUCKET/keys/
-         */
-        $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'), '');
-        if (empty($obj->data['keys']))
-            return array();
-        return array_map('urldecode', array_unique($obj->data['keys']));
+    public function getKeys($refresh = false) {
+        if ($refresh || $this->_keys == null) {
+            Yii::log('Bucket key listing is a very intensive operation, and should never occur in production!', \CLogger::LEVEL_WARNING);
+            Yii::trace('Fetching Bucket keys for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+            /**
+             * Non-null key param will prompt format of /buckets/BUCKET/keys/
+             */
+            $keys = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'), '')->data['keys'];
+            if (empty($keys))
+                return array();
+            $this->_keys = array_map('urldecode', array_unique($keys));
+        }
+        return $this->_keys;
     }
 
     /**
@@ -370,7 +384,7 @@ class Bucket extends CComponent {
      * @return array of Links
      */
     public function indexSearch($name, $type, $startOrExact, $end = NULL, $dedupe = false) {
-        $url = $this->client->transport->buildBucketIndexPath($this, $name.'_'.$type, $startOrExact, $end);
+        $url = $this->client->transport->buildBucketIndexPath($this, $name . '_' . $type, $startOrExact, $end);
         $response = $this->client->transport->get($url);
 
         $obj = Object::populateResponse(new Object($this->client, $this), $response);

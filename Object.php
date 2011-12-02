@@ -818,13 +818,13 @@ class Object extends CComponent {
         /**
          * Construct the URL
          */
-        $params = array('dw' => $dw);
+        $url = $this->client->transport->buildBucketKeyPath($this->bucket->name, $this->key, null, array('dw' => $dw));
 
         /**
          * Run the operation
          */
         Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->transport->deleteObject($this->bucket, $this->key, $params, '');
+        $response = $this->client->transport->delete($url);
         $this->client->transport->populate($this, $this->bucket, $response, 'deleteObject');
 
         return $this;

@@ -347,38 +347,7 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * This is renamed from "delete", as "delete" should be a generic function...
-     *
-     * @param \riiak\Bucket $bucket
-     * @param string $key
-     * @param array $params
-     * @param string $headers
-     * @return array
-     */
-    public function deleteObject(\riiak\Bucket $bucket = NULL, $key = '', array $params = array(), $headers = '') {
-        /**
-         * Construct URL
-         */
-        $url = $this->buildBucketKeyPath($bucket, $key, null, $params);
-
-        /**
-         * Prepare response header
-         */
-        Yii::trace('Delete the object in Riak ', 'ext.riiak.transport.http');
-
-        /**
-         * Process request.
-         */
-        $response = $this->processRequest('DELETE', $url);
-
-        /**
-         * Return response
-         */
-        return $response;
-    }
-
-    /**
-     * Process HTTP request using CURL
+     * Get (fetch) multiple objects
      *
      * @param array $urls
      * @param array $requestHeaders
