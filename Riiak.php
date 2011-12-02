@@ -12,6 +12,7 @@ use \CApplicationComponent,
  * connection, and the Riiak object is extremely lightweight.
  * @package riiak
  *
+ * @property-read bool $isAlive
  * @property-read bool $isMultiBackendSupport
  * @property-read bool $isSecondaryIndexSupport
  * @property-read array $serverConfig Riak server configuration
@@ -186,10 +187,9 @@ class Riiak extends CApplicationComponent {
      * @return array
      */
     public function buckets() {
+        Yii::log('Bucket listing is a very intensive operation, and should never occur in production!', \CLogger::LEVEL_WARNING);
         Yii::trace('Fetching list of buckets', 'ext.riiak.Riiak');
-        $buckets = array();
-        $buckets = $this->transport->getBuckets($this);
-        return $buckets;
+        return $this->transport->getBuckets($this);
     }
 
     /**
@@ -199,7 +199,7 @@ class Riiak extends CApplicationComponent {
      */
     public function getIsAlive() {
         Yii::trace('Pinging Riak server', 'ext.riiak.Riiak');
-        return $this->transport->getBuckets($this);
+        return $this->transport->getIsAlive();
     }
 
     /**

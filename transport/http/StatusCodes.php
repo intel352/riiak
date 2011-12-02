@@ -11,6 +11,9 @@ use \CJSON,
  * StatusCodes Object allows you to validate all Riak operation
  * responses.
  * @package riiak.transport.http
+ *
+ * @todo Give basic definition of HTTP codes, using header response
+ * @todo Streamline custom error definitions
  */
 class StatusCodes extends \riiak\transport\Status {
 

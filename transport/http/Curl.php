@@ -159,7 +159,7 @@ class Curl extends \riiak\transport\Http {
      *
      * @param array $urls
      * @param array $requestHeaders
-     * @param Object $content
+     * @param string $content
      * @return array
      */
     public function multiGet(array $urls, array $requestHeaders = array(), $content = '') {

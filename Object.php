@@ -14,22 +14,34 @@ use \CComponent,
  *
  * Magic properties
  *
- * Private
- * @property string vclock
+ * @property string $contentType
+ * @property mixed $data
+ * @property bool $exists
+ * @property array[string]string $meta
+ * @property array[string]array|string|int $indexes
+ * @property array[string]string $autoIndexes
+ * @property array[int]string $siblings
+ *
+ * @property-read int $status Status code of response
+ * @property-read bool $hasSiblings
+ * @property-read int $siblingCount
+ * @property-read array[int]Link $links
+ * @property-read MapReduce $mapReduce
+ * @property-read string $vclock
  */
 class Object extends CComponent {
 
     /**
      * Client instance
      *
-     * @var \riiak\Riiak
+     * @var Riiak
      */
     public $client;
 
     /**
      * Bucket
      *
-     * @var \riiak\Bucket
+     * @var Bucket
      */
     public $bucket;
 
@@ -55,10 +67,16 @@ class Object extends CComponent {
     /**
      * Array of Links
      *
-     * @var array
+     * @var array[int]Link
      */
-    public $_links = array();
-    public $siblings = null;
+    protected $_links = array();
+
+    /**
+     * Array of vtags
+     *
+     * @var array[int]string
+     */
+    protected $_siblings = array();
 
     /**
      * Whether the object exists
@@ -76,25 +94,25 @@ class Object extends CComponent {
     protected $_data;
 
     /**
-     * @var array
+     * @var array[string]string
      */
     protected $_meta = array();
 
     /**
-     * @var array
+     * @var array[string]array|string|int
      */
     protected $_indexes = array();
 
     /**
-     * @var array
+     * @var array[string]string
      */
     protected $_autoIndexes = array();
 
     /**
      * Construct a new Object
      *
-     * @param \riiak\Riiak $client A Riiak object
-     * @param \riiak\Bucket $bucket A Bucket object
+     * @param Riiak $client A Riiak object
+     * @param Bucket $bucket A Bucket object
      * @param string $key Optional - If empty, generated upon store()
      */
     public function __construct(Riiak $client, Bucket $bucket, $key = null) {
@@ -125,7 +143,7 @@ class Object extends CComponent {
      * Set the object's content type
      *
      * @param string $contentType The new content type
-     * @return \riiak\Object
+     * @return Object
      */
     public function setContentType($contentType) {
         $this->headers['content-type'] = $contentType;
@@ -145,7 +163,7 @@ class Object extends CComponent {
      * Set the object's data
      *
      * @param mixed $data The new data value
-     * @return \riiak\Object
+     * @return Object
      */
     public function setData($data) {
         $this->_data = $data;
@@ -175,9 +193,9 @@ class Object extends CComponent {
     /**
      * Add a link to a Object
      *
-     * @param \riiak\Link|\riiak\Object $obj Either Object or Link
-     * @param string $tag Optional: link tag. Default: bucket name. Ignored for Link
-     * @return \riiak\Object
+     * @param Link|Object $obj Either Object or Link
+     * @param string $tag optional link tag. Default: bucket name. Ignored for Link
+     * @return Object
      */
     public function addLink($obj, $tag = null) {
         if ($obj instanceof Link)
@@ -194,9 +212,9 @@ class Object extends CComponent {
     /**
      * Remove a link to a Object
      *
-     * @param \riiak\Link|\riiak\Object $obj Either Object or Link
-     * @param string $tag Optional: link tag. Default: bucket name. Ignored for Link
-     * @return \riiak\Object
+     * @param Link|Object $obj Either Object or Link
+     * @param string $tag optional link tag. Default: bucket name. Ignored for Link
+     * @return Object
      */
     public function removeLink($obj, $tag = null) {
         if ($obj instanceof Link)
@@ -229,13 +247,13 @@ class Object extends CComponent {
     /** @section Indexes */
 
     /**
-     * @param type $array
-     * @param type $name
-     * @param type $value
-     * @param type $type
+     * @param array $array
+     * @param string $name
+     * @param string|int $value
+     * @param 'int'|'bin' $type optional
      * @return Object
      */
-    protected function _addIndex(&$array, $name, $value, $type = null) {
+    protected function _addIndex(array &$array, $name, $value, $type = null) {
         $index = strtolower($name . ($type !== null ? '_' . $type : ''));
         if (!isset($array[$index]))
             $array[$index] = array();
@@ -251,12 +269,12 @@ class Object extends CComponent {
 
     /**
      * @param array $array
-     * @param type $name
-     * @param type $value
-     * @param type $type
+     * @param string $name
+     * @param array|string|int $value
+     * @param 'int'|'bin' $type optional
      * @return Object
      */
-    protected function _setIndex(&$array, $name, $value, $type = null) {
+    protected function _setIndex(array &$array, $name, $value, $type = null) {
         $index = strtolower($name . ($type !== null ? '_' . $type : ''));
 
         $array[$index] = $value;
@@ -265,23 +283,23 @@ class Object extends CComponent {
     }
 
     /**
-     * @param type $array
-     * @param type $name
-     * @param type $type
+     * @param array $array
+     * @param string $name
+     * @param 'int'|'bin' $type optional
      * @return bool
      */
-    protected function _hasIndex(&$array, $name, $type = null) {
+    protected function _hasIndex(array &$array, $name, $type = null) {
         $index = strtolower($name . ($type !== null ? '_' . $type : ''));
         return isset($array[$index]);
     }
 
     /**
-     * @param type $array
-     * @param type $name
-     * @param type $type
-     * @return mixed
+     * @param array $array
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     * @return array|string|int
      */
-    protected function _getIndex(&$array, $name, $type = null) {
+    protected function _getIndex(array &$array, $name, $type = null) {
         $index = strtolower($name . ($type !== null ? '_' . $type : ''));
 
         if (!isset($array[$index]))
@@ -291,13 +309,13 @@ class Object extends CComponent {
     }
 
     /**
-     * @param type $array
-     * @param type $name
-     * @param type $type
-     * @param type $value
+     * @param array $array
+     * @param string $name
+     * @param 'int'|'bin' $type optional
+     * @param string|int $value optional Explicit value to remove
      * @return Object
      */
-    protected function _removeIndex(&$array, $name, $type = null, $value = null) {
+    protected function _removeIndex(array &$array, $name, $type = null, $value = null) {
         $index = strtolower($name . ($type !== null ? '_' . $type : ''));
 
         if (isset($array[$index]))
@@ -312,11 +330,11 @@ class Object extends CComponent {
 
     /**
      * @param array $array
-     * @param type $name
-     * @param type $type
+     * @param string $name
+     * @param 'int'|'bin' $type optional
      * @return Object
      */
-    protected function _removeAllIndexes(&$array, $name = null, $type = null) {
+    protected function _removeAllIndexes(array &$array, $name = null, $type = null) {
         if ($name === null)
             $array = array();
         else if ($type !== null)
@@ -335,6 +353,7 @@ class Object extends CComponent {
      * This will create the index if it does not exist, or will
      * append an additional value if the index already exists and
      * does not contain the provided value.
+     *
      * @param string $name
      * @param 'int'|'bin' $type optional
      * @param string|int $explicitValue optional If provided, uses this
@@ -351,6 +370,7 @@ class Object extends CComponent {
 
     /**
      * Sets a given index to a specific value or set of values
+     *
      * @param string $name
      * @param array|string|int $value
      * @param 'int'|'bin' $type optional
@@ -361,8 +381,8 @@ class Object extends CComponent {
     }
 
     /**
-     * @param type $name
-     * @param type $type
+     * @param string $name
+     * @param 'int'|'bin' $type optional
      * @return bool
      */
     public function hasIndex($name, $type = null) {
@@ -374,24 +394,27 @@ class Object extends CComponent {
      * Note, the NULL value has special meaning - when the object is
      * ->store()d, this value will be replaced with the current value
      * the value of the field matching $indexName from the object's data
+     *
      * @param string $name
      * @param 'int'|'bin' $type optional
+     *
+     * @return array|string|int
      */
     public function getIndex($name, $type = null) {
         return $this->_getIndex($this->_indexes, $name, $type);
     }
 
     /**
-     * @param type $value
+     * @param array[string]array|string|int $value
      * @return Object
      */
-    public function setIndexes($value) {
+    public function setIndexes(array $value) {
         $this->_indexes = $value;
         return $this;
     }
 
     /**
-     * @return array
+     * @return array[string]array|string|int
      */
     public function getIndexes() {
         return $this->_indexes;
@@ -399,6 +422,7 @@ class Object extends CComponent {
 
     /**
      * Removes a specific value from a given index
+     *
      * @param string $name
      * @param 'int'|'bin' $type optional
      * @param string|int $explicitValue optional
@@ -446,6 +470,7 @@ class Object extends CComponent {
 
     /**
      * Returns whether the object has a given auto index
+     *
      * @param string $name
      * @param 'int'|'bin' $type optional
      *
@@ -456,16 +481,16 @@ class Object extends CComponent {
     }
 
     /**
-     * @param type $value
+     * @param array[string]string $value
      * @return Object
      */
-    public function setAutoIndexes($value) {
+    public function setAutoIndexes(array $value) {
         $this->_autoIndexes = $value;
         return $this;
     }
 
     /**
-     * @return array
+     * @return array[string]string
      */
     public function getAutoIndexes() {
         return $this->_autoIndexes;
@@ -541,7 +566,7 @@ class Object extends CComponent {
 
     /**
      * Gets all metadata values
-     * @return array<string>=string
+     * @return array[string]string
      */
     public function getMeta() {
         return $this->_meta;
@@ -570,9 +595,9 @@ class Object extends CComponent {
      * metadata, and possibly new data if Riak contains a newer version of
      * the object according to the object's vector clock.
      *
-     * @param int $w W-Value: X paritions must respond before returning
-     * @param int $dw DW-Value: X partitions must confirm write before returning
-     * @return \riiak\Object
+     * @param int $w optional W-Value: X partitions must respond before returning
+     * @param int $dw optional DW-Value: X partitions must confirm write before returning
+     * @return Object
      */
     public function store($w = null, $dw = null) {
         /**
@@ -585,7 +610,7 @@ class Object extends CComponent {
          * Construct the URL
          */
         $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
-        $url = $this->client->transport->buildBucketPath($this->client, $this->bucket, $this->key, null, $params);
+        $url = $this->client->transport->buildBucketKeyPath($this->bucket, $this->key, null, $params);
 
         /**
          * Construct the headers
@@ -671,8 +696,8 @@ class Object extends CComponent {
      * could contain new metadata and a new value, if the object was updated
      * in Riak since it was last retrieved.
      *
-     * @param int $r R-Value: X partitions must respond before returning
-     * @return \riiak\Object
+     * @param int $r optional R-Value: X partitions must respond before returning
+     * @return Object
      */
     public function reload($r = null) {
         /**
@@ -684,6 +709,12 @@ class Object extends CComponent {
         return self::populateResponse($this, $response);
     }
 
+    /**
+     * @param Riiak $client
+     * @param array $objects
+     * @param int $r optional
+     * @return array[string]Object
+     */
     public static function reloadMulti(Riiak $client, array $objects, $r = null) {
         Yii::trace('Reloading multiple objects', 'ext.riiak.Object');
         $objects = array_combine(array_map(array('self', 'buildReloadUrl'), $objects, array_fill(0, count($objects), $r)), $objects);
@@ -698,9 +729,14 @@ class Object extends CComponent {
         return $objects;
     }
 
+    /**
+     * @param Object $object
+     * @param int $r optional
+     * @return string
+     */
     protected static function buildReloadUrl(Object $object, $r = null) {
         $params = array('r' => $object->bucket->getR($r));
-        return $object->client->transport->buildBucketPath($object->bucket, $object->key, null, $params);
+        return $object->client->transport->buildBucketKeyPath($object->bucket, $object->key, null, $params);
     }
 
     /**
@@ -770,8 +806,8 @@ class Object extends CComponent {
     /**
      * Delete this object from Riak
      *
-     * @param int $dw DW-Value: X partitions must delete object before returning
-     * @return \riiak\Object
+     * @param int $dw optional DW-Value: X partitions must delete object before returning
+     * @return Object
      */
     public function delete($dw = null) {
         /**
@@ -797,14 +833,14 @@ class Object extends CComponent {
     /**
      * Reset this object
      *
-     * @return \riiak\Object
+     * @return Object
      */
     public function clear() {
         $this->headers = array();
         $this->_links = array();
         $this->_data = null;
         $this->_exists = false;
-        $this->siblings = null;
+        $this->_siblings = array();
         $this->_indexes = array();
         $this->_autoIndexes = array();
         $this->_meta = array();
@@ -816,7 +852,7 @@ class Object extends CComponent {
      *
      * @return string|null
      */
-    protected function getVclock() {
+    public function getVclock() {
         if (array_key_exists('x-riak-vclock', $this->headers))
             return $this->headers['x-riak-vclock'];
         return null;
@@ -825,7 +861,8 @@ class Object extends CComponent {
     /**
      * Populate object links
      *
-     * @return \riiak\Object
+     * @param string $linkHeaders
+     * @return Object
      */
     public function populateLinks($linkHeaders) {
         $linkHeaders = explode(',', trim($linkHeaders));
@@ -851,7 +888,7 @@ class Object extends CComponent {
      * @return int
      */
     public function getSiblingCount() {
-        return count($this->siblings);
+        return count($this->_siblings);
     }
 
     /**
@@ -859,7 +896,7 @@ class Object extends CComponent {
      *
      * @param int $i Sibling number
      * @param int $r R-Value: X partitions must respond before returning
-     * @return \riiak\Object
+     * @return Object
      */
     public function getSibling($i, $r = null) {
         /**
@@ -888,8 +925,11 @@ class Object extends CComponent {
     /**
      * Retrieve an array of siblings
      *
+     * @todo It's possible to fetch multiple siblings in 1 request. That should be implemented here.
+     * @link http://wiki.basho.com/HTTP-Fetch-Object.html#Get-all-siblings-in-one-request
+     *
      * @param int $r R-Value: X partitions must respond before returning
-     * @return array Array of Objects
+     * @return array[int]Object
      */
     public function getSiblings($r = null) {
         $a = array();
@@ -900,10 +940,21 @@ class Object extends CComponent {
     }
 
     /**
+     * Specify sibling vtags
+     *
+     * @param array[int]string $siblings
+     * @return Object
+     */
+    public function setSiblings(array $siblings) {
+        $this->_siblings = $siblings;
+        return $this;
+    }
+
+    /**
      * Returns a MapReduce instance
      *
      * @param bool $reset Whether to create a new MapReduce instance
-     * @return \riiak\MapReduce
+     * @return MapReduce
      */
     public function getMapReduce($reset = false) {
         return $this->client->getMapReduce($reset);
@@ -913,7 +964,7 @@ class Object extends CComponent {
      * Returns a SecondaryIndex instance
      *
      * @param bool $reset Whether to create a new SecondaryIndex instance
-     * @return \riiak\SecondaryIndex
+     * @return SecondaryIndex
      */
     public function getSecondaryIndex($reset = false) {
         return $this->client->getSecondaryIndex($reset);

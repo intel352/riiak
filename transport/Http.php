@@ -378,40 +378,25 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * Get (fetch) multiple objects
+     * Process HTTP request using CURL
      *
      * @param array $urls
      * @param array $requestHeaders
-     * @param string $obj
-     * @return array|null
+     * @param string $content
+     * @return array
      */
-    public function multiGet(array $urls, array $requestHeaders = array(), $obj = '') {
-        try {
-            /**
-             * Process http request using processing method (Curl,fopen etc).
-             */
-            $responseData = $this->multiGet($urls, $requestHeaders, $obj);
-
-            /**
-             * Return headers/body array
-             */
-            return $responseData;
-        } catch (Exception $e) {
-            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.transport.http');
-            throw new Exception(Yii::t('Riiak', 'Failed to process multi-request.'), (int) $e->getCode(), $e->errorInfo);
-        }
-    }
+    abstract public function multiGet(array $urls, array $requestHeaders = array(), $content = '');
 
     /**
      * Populates the object. Only for internal use
      *
-     * @param object $object
-     * @param object $bucket
+     * @param \riiak\Object $object
+     * @param \riiak\Bucket $bucket
      * @param array $response Output of transport layer processing
-     * @param array $expectedStatuses List of statuses
+     * @param string $action Action label (used to fetch expected statuses)
      * @return \riiak\Object
      */
-    public function populate(\riiak\Object $object, \riiak\Bucket $bucket, $response = array(), $action = '') {
+    public function populate(\riiak\Object $object, \riiak\Bucket $bucket, array $response = array(), $action = '') {
         /**
          * Check for allowed response status list.
          */

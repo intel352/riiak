@@ -136,24 +136,24 @@ class Bucket extends CComponent {
     /**
      * Create a new Riak object that will be stored as JSON
      *
-     * @param string $key Name of the key
-     * @param object $data Data to store (Default: null)
+     * @param string $key optional Key value
+     * @param mixed $data optional Data to store (Default: null)
      * @return \riiak\Object
      */
-    public function newObject($key, $data = null) {
+    public function newObject($key=null, $data = null) {
         return $this->newBinary($key, $data, 'application/json', true);
     }
 
     /**
      * Create a new Riak object that will be stored as Binary
      *
-     * @param string $key Name of the key
-     * @param object $data Data to store
-     * @param string $contentType Content type of the object (Default: application/json)
-     * @param bool $jsonize Whether to treat the object as JSON (Default: false)
+     * @param string $key optional Key value
+     * @param mixed $data optional Data to store
+     * @param string $contentType optional Content type of the object (Default: application/json)
+     * @param bool $jsonize optional Whether to treat the object as JSON (Default: false)
      * @return \riiak\Object
      */
-    public function newBinary($key, $data, $contentType = 'application/json', $jsonize = false) {
+    public function newBinary($key = null, $data = null, $contentType = 'application/json', $jsonize = false) {
         $obj = new Object($this->client, $this, $key);
         $obj->data = $data;
         $obj->contentType = $contentType;
@@ -165,7 +165,7 @@ class Bucket extends CComponent {
      * Retrieve a JSON-encoded object from Riak
      *
      * @param string $key Name of the key
-     * @param int $r R-Value of the request (Default: bucket's R)
+     * @param int $r optional R-Value of the request (Default: bucket's R)
      * @return \riiak\Object
      */
     public function get($key, $r = null) {
@@ -290,7 +290,7 @@ class Bucket extends CComponent {
          * Use a Object to interpret the response, we are just interested in the value
          */
         $obj = new Object($this->client, $this);
-        $this->client->_transport->populate($obj, $this, $response, 'setBucketProperties');
+        $this->client->transport->populate($obj, $this, $response, 'setBucketProperties');
 
         if (!$obj->exists)
             throw new Exception('Error setting bucket properties.');
@@ -310,6 +310,7 @@ class Bucket extends CComponent {
      * @return array
      */
     public function getProperties() {
+        Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
         $obj = $this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'));
         return $obj->data['props'];
     }
@@ -321,6 +322,8 @@ class Bucket extends CComponent {
      * @return array
      */
     public function getKeys() {
+        Yii::log('Bucket key listing is a very intensive operation, and should never occur in production!', \CLogger::LEVEL_WARNING);
+        Yii::trace('Fetching Bucket keys for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
         /**
          * Non-null key param will prompt format of /buckets/BUCKET/keys/
          */
@@ -342,7 +345,6 @@ class Bucket extends CComponent {
         /**
          * Run the request
          */
-        Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
         $response = $this->client->transport->getObject($this, $params, $key, $spec);
 
         /**

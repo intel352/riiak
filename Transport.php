@@ -33,7 +33,7 @@ abstract class Transport extends CComponent {
      *
      * @return string
      */
-    abstract public function buildUrl();
+    #abstract public function buildUrl();
 
     /**
      * Builds a REST URL to access Riak API
@@ -44,7 +44,7 @@ abstract class Transport extends CComponent {
      * @param array $params
      * @return string
      */
-    abstract public function buildRestPath(Bucket $bucket = NULL, $key = NULL, $spec = NULL, array $params = NULL);
+    #abstract public function buildRestPath(Bucket $bucket = NULL, $key = NULL, $spec = NULL, array $params = NULL);
 
     /**
      * Return array of Bucket objects
