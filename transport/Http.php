@@ -93,15 +93,15 @@ abstract class Http extends \riiak\Transport {
      * @param \riiak\Bucket $bucket
      * @param array $params
      * @param string $key
-     * @param string $spec
+     * @param array $links
      * @return array
      */
-    public function getObject(\riiak\Bucket $bucket = NULL, array $params = array(), $key = null, $spec = null) {
+    public function getObject(\riiak\Bucket $bucket, array $params = array(), $key = null, $links = array()) {
         /**
          * Construct the URL
          */
-        $url = $this->buildBucketKeyPath($bucket, $key, $spec, $params);
-        Yii::trace('Fetching transport layer Bucket properties for bucket "' . $bucket->name . '"', 'ext.riiak.transport.httpRequest');
+        $url = $this->buildBucketKeyPath($bucket, $key, $links, $params);
+        Yii::trace('Running getObject request for bucket "' . $bucket->name . '"', 'ext.riiak.transport.httpRequest');
 
         /**
          * Process request.

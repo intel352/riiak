@@ -12,6 +12,15 @@ use \CComponent,
  * about a Riak bucket, and provides methods to create or retrieve
  * objects within the bucket.
  * @package riiak
+ *
+ * @property array $properties
+ * @property bool $allowMultiples
+ * @property int $dw
+ * @property int $nVal
+ * @property int $r
+ * @property int $w
+ *
+ * @property-read array $keys
  */
 class Bucket extends CComponent {
 
@@ -318,9 +327,12 @@ class Bucket extends CComponent {
      * @return array
      */
     public function getProperties($refresh = false) {
-        if ($refresh || $this->_properties == null) {
+        if ($refresh || !is_array($this->_properties)) {
             Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-            $this->_properties = $this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'))->data['props'];
+            $obj = $this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'));
+            if(empty($obj->data['props']))
+                return array();
+            $this->_properties = $obj->data['props'];
         }
         return $this->_properties;
     }
@@ -333,16 +345,16 @@ class Bucket extends CComponent {
      * @return array
      */
     public function getKeys($refresh = false) {
-        if ($refresh || $this->_keys == null) {
+        if ($refresh || !is_array($this->_keys)) {
             Yii::log('Bucket key listing is a very intensive operation, and should never occur in production!', \CLogger::LEVEL_WARNING);
             Yii::trace('Fetching Bucket keys for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
             /**
              * Non-null key param will prompt format of /buckets/BUCKET/keys/
              */
-            $keys = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'), '')->data['keys'];
-            if (empty($keys))
+            $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'), '');
+            if (empty($obj->data['keys']))
                 return array();
-            $this->_keys = array_map('urldecode', array_unique($keys));
+            $this->_keys = array_map('urldecode', array_unique($obj->data['keys']));
         }
         return $this->_keys;
     }
@@ -352,14 +364,13 @@ class Bucket extends CComponent {
      *
      * @param array $params
      * @param string $key
-     * @param string $spec
      * @return \riiak\Object
      */
-    protected function fetchBucketProperties(array $params = array(), $key = null, $spec = null) {
+    protected function fetchBucketProperties(array $params = array(), $key = null) {
         /**
          * Run the request
          */
-        $response = $this->client->transport->getObject($this, $params, $key, $spec);
+        $response = $this->client->transport->getObject($this, $params, $key);
 
         /**
          * Use a Object to interpret the response, we are just interested in the value

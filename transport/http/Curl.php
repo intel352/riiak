@@ -265,6 +265,8 @@ class Curl extends \riiak\transport\Http {
     /**
      * Remove bulk of empty keys from Riak response.
      *
+     * @todo This function needs dire help. Should only be used for processing keys from request
+     *
      * @param array $response
      * @param array $params
      * @return String  List of keys in JSON format.
