@@ -261,3 +261,45 @@ Searches can be executed using the \riiak\Riiak::search() method
     $results = $client->search('searchbucket', 'foo:one OR foo:two')->run();
 
 This method will return null unless executed against a Riak Search cluster.
+
+## Get Riak server configuration details ##
+getRiakConfiguration() method returns all Riak configuration details, like nodename, riak_search_version, ssl_version, mem_total, mem_allocated etc information.
+
+$client->_transport->getRiakConfiguration();
+
+## Check Riak server supports secondary indexes(2i) ##
+$client->getIsSecondaryIndexSupport() method returns boolean value either Riak supports secondary index functionality or not.
+
+## Check Riak server supports multi-backend ##
+$client->getIsMultiBackendSupport() method returns boolean value either Riak supports multi-backend or not.
+
+## Secondary Index implementation ##
+ Get list of keys using search criteria
+ 
+ $secondaryIndex = $client->getSecondaryIndexObject();
+ 
+ Set search criteria
+ $criteria->input = 'User'; -- Bucket name
+ $criteria->search = Array ( '0' => Array ( "column" => lastName, "keyword" => "L", "like" => 1, "escape" => 1 ) );
+ 
+ Get all keys
+ $arrKeys = $objSecondaryIndex->getKeys($criteria);
+ 
+## Secondary index with Map/Reduce for pagination and sorting ##
+ 
+ Get list of keys using search criteria
+ 
+ $secondaryIndex = $client->getSecondaryIndexObject();
+ 
+ Set search criteria
+ $criteria->inputs = 'User'; -- Bucket name
+ $criteria->search = Array ( '0' => Array ( "column" => lastName, "keyword" => "L", "like" => 1, "escape" => 1 ) );
+ 
+ Get all keys
+ $arrKeys = $objSecondaryIndex->getKeys($criteria);
+ 
+ Update criteria inputs with array of keys 
+ $criteria->inputs = $secondaryIndex->prepareInputKeys($arrKeys['keys'], 'User');
+ 
+ Then perform all Map/Reduce operations
+ $mr->map(), $mr->reduce() etc.
