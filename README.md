@@ -16,7 +16,7 @@ API documentation for this library can be found at
 <https://bitbucket.org/intel352/riiak/wiki>
 
 Documentation for use of Riak clients in general can be found at  
-<https://wiki.basho.com/display/RIAK/Client+Libraries>
+<http://wiki.basho.com/Client-Libraries.html>
 
 ## Repositories ##
 
