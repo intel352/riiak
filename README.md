@@ -1,18 +1,18 @@
-<img src="http://www.basho.com/images/riaklogo.png">
+![Basho Riak](http://www.basho.com/images/riaklogo.png)
 
 # Riak PHP Client for Yii #
 This is a PHP client for Riak, built as an extension for Yii Framework.
 Ported from Basho's official PHP client.
 
 ## Helpful Links ##
-Yii Framework Riiak extension page<br/>
+Yii Framework Riiak extension page
 <http://www.yiiframework.com/extension/riiak/>
 
-Yii Framework Riiak discussion thread<br/>
+Yii Framework Riiak discussion thread
 <http://www.yiiframework.com/forum/index.php?/topic/20090-riiak/>
 
 ## Documentation ##
-API documentation for this library can be found at<br/>
+API documentation for this library can be found at
 <https://bitbucket.org/intel352/riiak/wiki>
 
 Documentation for use of Riak clients in general can be found at<br/>
@@ -20,13 +20,13 @@ Documentation for use of Riak clients in general can be found at<br/>
 
 ## Repositories ##
 
-The official source code for this client can be retrieved from<br/>
+The official source code for this client can be retrieved from
 <https://bitbucket.org/intel352/riiak>
 
-Riak can be obtained pre-built from<br/>
+Riak can be obtained pre-built from
 <http://downloads.basho.com/riak/>
 
-or as source from<br/>
+or as source from
 <http://github.com/basho/riak/>
 
 ## Requirements ##
