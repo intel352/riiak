@@ -350,7 +350,7 @@ Secondary indexes can be queried using the \riiak\Bucket::indexSearch() method. 
     # Exact Match
     $results = $bucket->indexSearch('index_name', 'int', 1);
     foreach ($results as $link) {
-        echo 'Key: {$link->getKey()}<br/>';
+        echo 'Key: '.$link->getKey().'<br/>';
         $object = $link->get();
     }
 
