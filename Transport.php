@@ -106,10 +106,10 @@ abstract class Transport extends CComponent {
      * @param 'GET'|'POST'|'PUT'|'DELETE' $method
      * @param string $url
      * @param array $requestHeaders
-     * @param string $obj
+     * @param string $content
      * @return array|null
      */
-    abstract public function processRequest($method, $url, array $requestHeaders = array(), $obj = '');
+    abstract public function processRequest($method, $url, array $requestHeaders = array(), $content = '');
 
     /**
      * Parse header string into an assoc array

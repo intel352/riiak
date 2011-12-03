@@ -18,7 +18,7 @@ use \CComponent,
  * @property mixed $data
  * @property bool $exists
  * @property array[string]string $meta
- * @property array[string]array|string|int $indexes
+ * @property array[string][int]string|int $indexes
  * @property array[string]string $autoIndexes
  * @property array[int]string $siblings
  *
@@ -99,7 +99,7 @@ class Object extends CComponent {
     protected $_meta = array();
 
     /**
-     * @var array[string]array|string|int
+     * @var array[string][int]string|int
      */
     protected $_indexes = array();
 
@@ -322,8 +322,9 @@ class Object extends CComponent {
             if ($value !== null) {
                 if (is_array($array[$index]) && false !== ($position = array_search($value, $array[$index])))
                     unset($array[$index][$position]);
-            }else
+            }else{
                 unset($array[$index]);
+            }
 
         return $this;
     }
@@ -377,7 +378,7 @@ class Object extends CComponent {
      * @return $this
      */
     public function setIndex($name, $value, $type = null) {
-        return $this->_setIndex($this->_indexes, $name, $value, $type);
+        return $this->_setIndex($this->_indexes, $name, (array) $value, $type);
     }
 
     /**
@@ -398,14 +399,14 @@ class Object extends CComponent {
      * @param string $name
      * @param 'int'|'bin' $type optional
      *
-     * @return array|string|int
+     * @return array
      */
     public function getIndex($name, $type = null) {
         return $this->_getIndex($this->_indexes, $name, $type);
     }
 
     /**
-     * @param array[string]array|string|int $value
+     * @param array[string][int]string|int $value
      * @return Object
      */
     public function setIndexes(array $value) {
@@ -414,7 +415,7 @@ class Object extends CComponent {
     }
 
     /**
-     * @return array[string]array|string|int
+     * @return array[string][int]string|int
      */
     public function getIndexes() {
         return $this->_indexes;
@@ -661,8 +662,8 @@ class Object extends CComponent {
          * Add the indexes
          */
         foreach ($this->_indexes as $index => $values)
-            if ($values !== null)
-                $headers[] = 'X-Riak-Index-' . $index . ': ' . (is_array($values) ? implode(', ', array_map('urlencode', $values)) : urlencode($values));
+            if (is_array($values))
+                $headers[] = 'X-Riak-Index-' . $index . ': ' . implode(', ', array_map('urlencode', $values));
 
         /**
          * Add the metadata
@@ -687,8 +688,7 @@ class Object extends CComponent {
             $response = $this->client->transport->post($url, $headers, $content);
         }
 
-        $this->client->transport->populate($this, $this->bucket, $response, 'storeObject');
-        return $this;
+        return self::populateResponse($this, $response, 'storeObject');
     }
 
     /**
@@ -744,8 +744,8 @@ class Object extends CComponent {
      * @param array $response
      * @return Object
      */
-    public static function populateResponse(Object &$object, $response) {
-        $object->client->transport->populate($object, $object->bucket, $response, 'fetchObject');
+    public static function populateResponse(Object &$object, $response, $action='fetchObject') {
+        $object->client->transport->populate($object, $object->bucket, $response, $action);
 
         /**
          * Parse the index and metadata headers
@@ -769,7 +769,7 @@ class Object extends CComponent {
          * If there are siblings, load the data for the first one by default
          */
         if ($object->getHasSiblings()) {
-            $sibling = $this->getSibling(0);
+            $sibling = $object->getSibling(0);
             $object->data = $sibling->data;
         }
 
@@ -818,7 +818,7 @@ class Object extends CComponent {
         /**
          * Construct the URL
          */
-        $url = $this->client->transport->buildBucketKeyPath($this->bucket->name, $this->key, null, array('dw' => $dw));
+        $url = $this->client->transport->buildBucketKeyPath($this->bucket, $this->key, null, array('dw' => $dw));
 
         /**
          * Run the operation
@@ -918,8 +918,7 @@ class Object extends CComponent {
          */
         $obj = new Object($this->client, $this->bucket, $this->key);
         $obj->jsonize = $this->jsonize;
-        $this->client->transport->populate($obj, $this->bucket, $response, 'getSibling');
-        return $obj;
+        return self::populateResponse($obj, $response, 'getSibling');
     }
 
     /**

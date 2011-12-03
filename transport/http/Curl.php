@@ -66,16 +66,15 @@ class Curl extends \riiak\transport\Http {
     }
 
     /**
-     * Process HTTP request using CURL.
+     * Process HTTP request
      *
-     * @param \riiak\Riiak $client
      * @param string $method
      * @param string $url
      * @param array $requestHeaders
      * @param string $content
      * @return array|null
      */
-    public function sendRequest($method, $url, array $requestHeaders = array(), $content = '') {
+    public function processRequest($method, $url, array $requestHeaders = array(), $content = '') {
         /**
          * Init curl
          */
@@ -83,7 +82,7 @@ class Curl extends \riiak\transport\Http {
         $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $content);
 
         if ($this->client->enableProfiling)
-            $profileToken = 'ext.riiak.transport.http.curl.sendRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
+            $profileToken = 'ext.riiak.transport.http.curl.processRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
         /**
          * Capture response headers
@@ -106,7 +105,7 @@ class Curl extends \riiak\transport\Http {
         curl_setopt_array($ch, $curlOpts);
         try {
             if ($this->client->enableProfiling)
-                Yii::beginProfile($profileToken, 'ext.riiak.transport.http.curl.sendRequest');
+                Yii::beginProfile($profileToken, 'ext.riiak.transport.http.curl.processRequest');
 
             /**
              * Run the request
@@ -116,46 +115,21 @@ class Curl extends \riiak\transport\Http {
             curl_close($ch);
 
             if ($this->client->enableProfiling)
-                Yii::endProfile($profileToken, 'ext.riiak.transport.http.curl.sendRequest');
-
-            /**
-             * Prepare curl response
-             */
-            $responseData = array('http_code' => $httpCode, 'headerData' => $responseHeadersIO, 'body' => $responseBodyIO);
+                Yii::endProfile($profileToken, 'ext.riiak.transport.http.curl.processRequest');
 
             /**
              * Return curl response.
              */
-            return $responseData;
+            return $this->processResponse($httpCode, $responseHeadersIO, $responseBodyIO);
         } catch (Exception $e) {
             curl_close($ch);
-            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.curl.sendRequest');
+            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.curl.processRequest');
             return NULL;
         }
     }
 
     /**
-     * Parse HTTP header string into an assoc array
-     *
-     * @param array $headers
-     */
-    public function processHeaders($headers) {
-        $retVal = array();
-        $fields = array_filter(explode("\r\n", preg_replace('/\x0D\x0A[\x09\x20]+/', ' ', $headers)));
-        foreach ($fields as $field) {
-            if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
-                $match[1] = preg_replace('/(?<=^|[\x09\x20\x2D])./e', 'strtoupper("\0")', strtolower(trim($match[1])));
-                if (isset($retVal[$match[1]]))
-                    $retVal[$match[1]] = array($retVal[$match[1]], $match[2]);
-                else
-                    $retVal[$match[1]] = trim($match[2]);
-            }
-        }
-        return $retVal;
-    }
-
-    /**
-     * Process HTTP request using CURL
+     * Get (fetch) multiple objects
      *
      * @param array $urls
      * @param array $requestHeaders
@@ -169,7 +143,7 @@ class Curl extends \riiak\transport\Http {
         $mh = curl_multi_init();
         $curlOpts = $this->buildCurlOpts('GET', '', $requestHeaders, $content);
 
-        Yii::trace('Executing HTTP Multi ' . $method . ': ' . \CVarDumper::dumpAsString($urls) . ($content ? ' with content "' . $content . '"' : ''), 'ext.Transport.Http.Curl');
+        Yii::trace('Executing HTTP Multi GET: ' . \CVarDumper::dumpAsString($urls) . ($content ? ' with content "' . $content . '"' : ''), 'ext.Transport.Http.Curl');
         if ($this->client->enableProfiling)
             $profileToken = 'ext.riiak.transport.http.curl.multiGet(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
@@ -235,15 +209,9 @@ class Curl extends \riiak\transport\Http {
                         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
                         /**
-                         * Get headers
+                         * Process response
                          */
-                        $parsedHeaders = $this->processHeaders($responses[$url]['responseHeadersIO']);
-                        $responseHeaders = array_merge(array('http_code' => $httpCode), array_change_key_case($parsedHeaders, CASE_LOWER));
-
-                        /**
-                         * Return headers/body array
-                         */
-                        $results[$url] = array('headers' => $responseHeaders, 'body' => $responses[$url]['responseBodyIO']);
+                        $results[$url] = $this->processResponse($httpCode, $responses[$url]['responseHeadersIO'], $responses[$url]['responseBodyIO']);
                     } catch (Exception $e) {
                         Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.curl.multiGet');
                         $results[$url] = null;

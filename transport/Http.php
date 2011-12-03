@@ -260,47 +260,36 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * Executes HTTP request, returns named array(headers, body) of request.
-     * Throws exception upon error
+     * Returns process headers along with status code & body
      *
-     * @param string $method GET|POST|PUT|DELETE
-     * @param string $url
-     * @param array $requestHeaders
-     * @param string $content
-     * @return array
+     * @param int $httpCode
+     * @param string $headers
+     * @param string $body
+     * @return array[headers,body]
      */
-    public function processRequest($method, $url, array $requestHeaders = array(), $content = '') {
-        try {
-            /**
-             * Process http request using processing method (Curl,fopen etc).
-             */
-            $responseData = $this->sendRequest($method, $url, $requestHeaders, $content);
-
-            /**
-             * Get headers
-             */
-            $parsedHeaders = $this->processHeaders($responseData['headerData']);
-            $responseHeaders = array_merge(array('http_code' => $responseData['http_code']), array_change_key_case($parsedHeaders, CASE_LOWER));
-
-            /**
-             * Return headers/body array
-             */
-            return array('headers' => $responseHeaders, 'body' => $responseData['body']);
-        } catch (Exception $e) {
-            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.Transport.Http');
-            throw new Exception(Yii::t('Riiak', 'Failed to process request.'), (int) $e->getCode(), $e->errorInfo);
-        }
+    public function processResponse($httpCode, $headers, $body) {
+        $headers = $this->processHeaders($headers);
+        $headers = array_merge(array('http_code' => $httpCode), array_change_key_case($headers, CASE_LOWER));
+        return array('headers' => $headers, 'body' => $body);
     }
 
     /**
      * Parse HTTP header string into an assoc array
      *
-     * @param string $headers
-     * @return array
+     * @param array $headers
      */
     public function processHeaders($headers) {
         $retVal = array();
-        $retVal = $this->processHeaders($headers);
+        $fields = array_filter(explode("\r\n", preg_replace('/\x0D\x0A[\x09\x20]+/', ' ', $headers)));
+        foreach ($fields as $field) {
+            if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
+                $match[1] = preg_replace('/(?<=^|[\x09\x20\x2D])./e', 'strtoupper("\0")', strtolower(trim($match[1])));
+                if (isset($retVal[$match[1]]))
+                    $retVal[$match[1]] = array($retVal[$match[1]], $match[2]);
+                else
+                    $retVal[$match[1]] = trim($match[2]);
+            }
+        }
         return $retVal;
     }
 
