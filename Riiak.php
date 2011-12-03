@@ -15,10 +15,9 @@ use \CApplicationComponent,
  * @property-read bool $isAlive
  * @property-read bool $isMultiBackendSupport
  * @property-read bool $isSecondaryIndexSupport
- * @property-read array $serverConfig Riak server configuration
+ * @property-read array $configuration Riak server configuration
  * @property-read \riiak\Transport $transport Riiak Transport layer
  * @property-read \riiak\MapReduce $mapReduce Map/Reduce object
- * @property-read \riiak\SecondaryIndex $secondaryIndex Secondary Index object
  */
 class Riiak extends CApplicationComponent {
 
@@ -77,7 +76,6 @@ class Riiak extends CApplicationComponent {
      * @var string Default: 'mapred'
      */
     public $mapredPrefix = 'mapred';
-
     public $pingPrefix = 'ping';
     public $statsPrefix = 'stats';
 
@@ -126,17 +124,11 @@ class Riiak extends CApplicationComponent {
     protected $_mr;
 
     /**
-     *
-     * @var \riiak\SecondaryIndex
-     */
-    protected $_sIndex;
-
-    /**
      * Riak configuration details
      *
      * @var array
      */
-    protected $_serverConfig;
+    protected $_config;
 
     /**
      * Transport layer object
@@ -241,10 +233,10 @@ class Riiak extends CApplicationComponent {
      *
      * @return array
      */
-    public function getServerConfig() {
-        if(!is_array($this->_serverConfig))
-            $this->_serverConfig = $this->getTransport()->getRiakConfiguration();
-        return $this->_serverConfig;
+    public function getConfiguration() {
+        if (!is_array($this->_config))
+            $this->_config = $this->getTransport()->getRiakConfiguration();
+        return $this->_config;
     }
 
     /**
@@ -260,19 +252,9 @@ class Riiak extends CApplicationComponent {
     }
 
     /**
-     * Returns the SecondaryIndex instance (created if not exists)
-     *
-     * @param bool $reset Whether to create a new SecondaryIndex instance
-     * @return \riiak\SecondaryIndex
-     */
-    public function getSecondaryIndex($reset = false) {
-        if ($reset || !($this->_sIndex instanceof SecondaryIndex))
-            $this->_sIndex = new SecondaryIndex($this);
-        return $this->_sIndex;
-    }
-
-    /**
      * Check whether riak supports multi-backend or not.
+     *
+     * @todo Find better solution for this
      *
      * @return bool
      */
@@ -282,7 +264,9 @@ class Riiak extends CApplicationComponent {
     }
 
     /**
-     *  Check whether riak supports secondary index or not.
+     * Check whether riak supports secondary index or not.
+     *
+     * @todo Find better solution for this
      *
      * @return bool
      */

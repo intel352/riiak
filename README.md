@@ -250,7 +250,7 @@ This method returns an array of data representing the result of the Map/Reduce f
 *More examples of Map/Reduce can be found in unit_tests.php (@todo - not existing yet)*
 
 ## Using Search ##
-Searches can be executed using the \riiak\Riiak::search() method
+Searches can be executed using the \riiak\MapReduce::search() method
 
     # Create some test data
     $bucket = $client->bucket('searchbucket');
@@ -258,48 +258,105 @@ Searches can be executed using the \riiak\Riiak::search() method
     $bucket->newObject('two', array('foo'=>'two', 'bar'=>'green'))->store();
 
     # Execute a search for all objects with matching properties
-    $results = $client->search('searchbucket', 'foo:one OR foo:two')->run();
+    $results = $client->mapReduce->search('searchbucket', 'foo:one OR foo:two')->run();
 
 This method will return null unless executed against a Riak Search cluster.
 
 ## Get Riak server configuration details ##
-getRiakConfiguration() method returns all Riak configuration details, like nodename, riak_search_version, ssl_version, mem_total, mem_allocated etc information.
-
-$client->_transport->getRiakConfiguration();
+    $client->configuration property returns all Riak configuration details, like nodename, riak_search_version, ssl_version, mem_total, mem_allocated etc information.
 
 ## Check Riak server supports secondary indexes(2i) ##
-$client->getIsSecondaryIndexSupport() method returns boolean value either Riak supports secondary index functionality or not.
+    $client->getIsSecondaryIndexSupport() method returns boolean value either Riak supports secondary index functionality or not.
 
 ## Check Riak server supports multi-backend ##
-$client->getIsMultiBackendSupport() method returns boolean value either Riak supports multi-backend or not.
+    $client->getIsMultiBackendSupport() method returns boolean value either Riak supports multi-backend or not.
 
-## Secondary Index implementation ##
- Get list of keys using search criteria
- 
- $secondaryIndex = $client->getSecondaryIndexObject();
- 
- Set search criteria
- $criteria->input = 'User'; -- Bucket name
- $criteria->search = Array ( '0' => Array ( "column" => lastName, "keyword" => "L", "like" => 1, "escape" => 1 ) );
- 
- Get all keys
- $arrKeys = $objSecondaryIndex->getKeys($criteria);
- 
-## Secondary index with Map/Reduce for pagination and sorting ##
- 
- Get list of keys using search criteria
- 
- $secondaryIndex = $client->getSecondaryIndexObject();
- 
- Set search criteria
- $criteria->inputs = 'User'; -- Bucket name
- $criteria->search = Array ( '0' => Array ( "column" => lastName, "keyword" => "L", "like" => 1, "escape" => 1 ) );
- 
- Get all keys
- $arrKeys = $objSecondaryIndex->getKeys($criteria);
- 
- Update criteria inputs with array of keys 
- $criteria->inputs = $secondaryIndex->prepareInputKeys($arrKeys['keys'], 'User');
- 
- Then perform all Map/Reduce operations
- $mr->map(), $mr->reduce() etc.
+## Meta Data ##
+You can provide meta data on objects using \riiak\Object::getMetaValue() and \riiak\Object::setMetaValue()
+
+    # Set some new meta data
+    $object->setMetaValue('some-meta', 'some-value');
+
+    # Get some meta data (returns null if not found)
+    $object->getMetaValue('some-meta');
+
+    # Set all meta data (an array keyed by meta name)
+    $object->setMeta(array('metakey'=>'metaval'));
+    $object->meta = array('metakey'=>'metaval');
+
+    # Get all meta data (an array keyed by meta name)
+    $meta = $object->getMeta();
+    $meta = $object->meta;
+
+Remove existing metadata
+
+    # Remove a single value
+    $object->removeMeta('some-meta');
+
+    # Remove all meta data
+    $object->removeAllMeta();
+
+## Adding Secondary Indexes ##
+Secondary indexes can be added using the \riiak\Object::addIndex() and \riiak\Object::addAutoIndex() methods.
+
+Auto indexes are kept fresh with the associated field automatically, so if you read an object, modify its data, and write it back, the auto index will reflect the new value from the object.  Traditional indexes are fixed and must be manually managed.  *NOTE* that auto indexes are a function of the Riak PHP client, and are not part of native Riak functionality.  Other clients writing the same object must manage the index manually.
+
+    # Create some test data
+    $bucket = $client->bucket('indextest');
+    $bucket
+      ->newObject('one', array('some_field'=>1, 'bar'=>'red'))
+      # the 3rd parameter for addIndex() is an index value that we're supplying
+      ->addIndex('index_name', 'int', 1)
+      ->addIndex('index_name', 'int', 2)
+      ->addIndex('text_index', 'bin', 'apple')
+      # a shortcut to addAutoIndex() is to call addIndex() without 3rd parameter
+      ->addAutoIndex('some_field', 'int')
+      ->addAutoIndex('bar', 'bin')
+      ->store();
+
+You can remove a specific value from an index, all values from an index, or all indexes:
+
+    # Remove just a single value
+    $object->removeIndex('index_name', 'int', 2);
+
+    # Remove all values from an index
+    $object->removeAllIndexes('index_name', 'int');
+
+    # Remove all index types for a given index name
+    $object->removeAllIndexes('index_name');
+
+    # Remove all indexes
+    $object->removeAllIndexes();
+
+Likewise you can remove auto indexes:
+
+    # Just the 'foo' index
+    $object->removeAutoIndex('foo', 'int');
+
+    # All auto indexes
+    $object->removeAllAutoIndexes('foo', 'int');
+
+    # All auto indexes
+    $object->removeAllAutoIndexes();
+
+Mass load indexes, or just replace an existing index:
+
+    $object->setIndex('index_name', 'int', array(1, 2, 3));
+    $object->setIndex('text_index', 'bin', 'foo');
+
+## Querying Secondary Indexes ##
+Secondary indexes can be queried using the \riiak\Bucket::indexSearch() method.  This returns an array of \riiak\Link objects.
+
+    # Exact Match
+    $results = $bucket->indexSearch('index_name', 'int', 1);
+    foreach ($results as $link) {
+        echo 'Key: {$link->getKey()}<br/>';
+        $object = $link->get();
+    }
+
+    # Range Search
+    $results = $bucket->indexSearch('index_name', 'int', 1, 10);
+
+Duplicate entries may be found in a ranged index search if a given index has multiple values that fall within the range.  You can request that these duplicates be eliminated in the result.
+
+    $results = $bucket->indexSearch('index_name', 'int', 1, 10, true);

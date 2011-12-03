@@ -12,7 +12,50 @@ use \CComponent,
  * map/reduce operation on Riak.
  * @package riiak
  */
-class MapReduce extends Backend {
+class MapReduce extends CComponent {
+
+    /**
+     * A Riak client object
+     *
+     * @var Riiak
+     */
+    public $client;
+
+    /**
+     * Phases to performs map/reduce operations
+     *
+     * @var array
+     */
+    public $phases = array();
+
+    /**
+     * Bucket name (string) or array of inputs
+     * If bucket name, then all keys of bucket will be used as inputs (expensive)
+     *
+     * @var string|array
+     */
+    public $inputs = array();
+
+    /**
+     * Input mode specifies operating mode (e.g Bucket)
+     *
+     * @var string
+     */
+    public $inputMode;
+
+    /**
+     * List of key filters
+     *
+     * @var array
+     */
+    public $keyFilters = array();
+
+    /**
+     * @param Riiak $client A Riiak object
+     */
+    public function __construct(Riiak $client) {
+        $this->client = $client;
+    }
 
     /**
      * Adds object's bucket name and key will be added to m/r inputs
