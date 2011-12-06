@@ -959,14 +959,4 @@ class Object extends CComponent {
         return $this->client->getMapReduce($reset);
     }
 
-    /**
-     * Returns a SecondaryIndex instance
-     *
-     * @param bool $reset Whether to create a new SecondaryIndex instance
-     * @return SecondaryIndex
-     */
-    public function getSecondaryIndex($reset = false) {
-        return $this->client->getSecondaryIndex($reset);
-    }
-
 }
