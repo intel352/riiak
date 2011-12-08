@@ -465,7 +465,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Get riak configuration
          */
-        $arrConfiguration = $this->client->serverConfig;
+        $arrConfiguration = $this->client->getConfiguration();
 
         /**
          * Check riak supports multibackend or not
@@ -488,7 +488,7 @@ abstract class Http extends \riiak\Transport {
         /**
          * Get riak configuration
          */
-        $arrConfiguration = $this->client->serverConfig;
+        $arrConfiguration = $this->client->getConfiguration();
 
         /**
          * Check riak supports leveldb or not

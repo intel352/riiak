@@ -907,7 +907,7 @@ class Object extends CComponent {
         /**
          * Run the request
          */
-        $vtag = $this->siblings[$i];
+        $vtag = $this->_siblings[$i];
         $params = array('r' => $r, 'vtag' => $vtag);
 
         Yii::trace('Fetching sibling "' . $i . '" of object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
