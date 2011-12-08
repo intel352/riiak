@@ -143,6 +143,8 @@ abstract class Transport extends CComponent {
     /**
      * Method to validate riak response
      *
+     * @param string $response
+     * @param string $action
      * @return bool
      */
     abstract public function validateResponse($response, $action);

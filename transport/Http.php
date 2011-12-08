@@ -276,7 +276,8 @@ abstract class Http extends \riiak\Transport {
     /**
      * Parse HTTP header string into an assoc array
      *
-     * @param array $headers
+     * @param string $headers
+     * @return array
      */
     public function processHeaders($headers) {
         $retVal = array();
