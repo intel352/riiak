@@ -42,7 +42,7 @@ Clone this repository to fetch the latest version of this client
 This quick example assumes that you have a local riak cluster running on port 8098,
 and have installed the Riiak extension into protected/extensions/riiak/
 
-###config/config.php:###
+###config/main.php:###
 
     // ...
     'aliases'=>array(
