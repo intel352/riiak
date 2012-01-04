@@ -68,10 +68,10 @@ class Curl extends \riiak\transport\Http {
     /**
      * Process HTTP request
      *
-     * @param string $method
+     * @param 'GET'|'POST'|'PUT'|'DELETE' $method
      * @param string $url
-     * @param array $requestHeaders
-     * @param string $content
+     * @param array $requestHeaders optional
+     * @param string $content optional
      * @return array|null
      */
     public function processRequest($method, $url, array $requestHeaders = array(), $content = '') {
