@@ -22,7 +22,8 @@ use \CComponent,
  * @property array[string]string $autoIndexes
  * @property array[int]string $siblings
  *
- * @property-read int $status Status code of response
+ * @property-read int $httpCode Status code of response
+ * @property-read string $httpStatus Status msg response
  * @property-read bool $hasSiblings
  * @property-read int $siblingCount
  * @property-read array[int]Link $links
@@ -122,12 +123,21 @@ class Object extends CComponent {
     }
 
     /**
-     * Returns HTTP status of last operation
+     * Returns HTTP status code of last operation
      *
      * @return int
      */
-    public function getStatus() {
+    public function getHttpCode() {
         return $this->headers['http_code'];
+    }
+
+    /**
+     * Returns HTTP status msg of last operation
+     *
+     * @return string
+     */
+    public function getHttpStatus() {
+        return $this->headers['http_status'];
     }
 
     /**
@@ -601,94 +611,9 @@ class Object extends CComponent {
      * @return Object
      */
     public function store($w = null, $dw = null) {
-        /**
-         * Use defaults if not specified
-         */
-        $w = $this->bucket->getW($w);
-        $dw = $this->bucket->getDW($w);
-
-        /**
-         * Construct the URL
-         */
-        $params = array('returnbody' => 'true', 'w' => $w, 'dw' => $dw);
-        $url = $this->client->transport->buildBucketKeyPath($this->bucket, $this->key, null, $params);
-
-        /**
-         * Construct the headers
-         */
-        $headers = array('Accept: text/plain, */*; q=0.5',
-            'Content-Type: ' . $this->getContentType(),
-            'X-Riak-ClientId: ' . $this->client->clientId);
-
-        /**
-         * Add the vclock if it exists
-         */
-        if (!empty($this->vclock))
-            $headers[] = 'X-Riak-Vclock: ' . $this->vclock;
-
-        /**
-         * Add the Links
-         */
-        foreach ($this->_links as $link)
-            $headers[] = 'Link: ' . $link->toLinkHeader($this->client);
-
-        /**
-         * Add the auto indexes
-         */
-        if (is_array($this->_autoIndexes) && !empty($this->_autoIndexes)) {
-            if (!is_array($this->data))
-                throw new Exception('Auto index feature requires that "$this->data" be an array.');
-
-            $collisions = array();
-            foreach ($this->_autoIndexes as $index => $fieldName) {
-                $value = null;
-                // look up the value
-                if (isset($this->data[$fieldName])) {
-                    $value = $this->data[$fieldName];
-                    $headers[] = 'X-Riak-Index-' . $index . ': ' . urlencode($value);
-
-                    // look for value collisions with normal indexes
-                    if (isset($this->_indexes[$index]))
-                        if (false !== array_search($value, $this->_indexes[$index]))
-                            $collisions[$index] = $value;
-                }
-            }
-
-            $this->_meta['client-autoindex'] = count($this->_autoIndexes) > 0 ? CJSON::encode($this->_autoIndexes) : null;
-            $this->_meta['client-autoindexcollision'] = count($collisions) > 0 ? CJSON::encode($collisions) : null;
-        }
-
-        /**
-         * Add the indexes
-         */
-        foreach ($this->_indexes as $index => $values)
-            if (is_array($values))
-                $headers[] = 'X-Riak-Index-' . $index . ': ' . implode(', ', array_map('urlencode', $values));
-
-        /**
-         * Add the metadata
-         */
-        foreach ($this->_meta as $metaName => $metaValue)
-            if ($metaValue !== null)
-                $headers[] = 'X-Riak-Meta-' . $metaName . ': ' . $metaValue;
-
-        if ($this->jsonize)
-            $content = CJSON::encode($this->data);
-        else
-            $content = $this->data;
-
-        /**
-         * Run the operation
-         */
-        if ($this->key) {
-            Yii::trace('Storing object with key "' . $this->key . '" in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-            $response = $this->client->transport->putObject($this->bucket, $headers, $content, $url);
-        } else {
-            Yii::trace('Storing new object in bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-            $response = $this->client->transport->post($url, $headers, $content);
-        }
-
-        return self::populateResponse($this, $response, 'storeObject');
+        $params = array('returnbody' => 'true', 'w' => $this->bucket->getW($w), 'dw' => $this->bucket->getDW($dw));
+        $response = $this->client->transport->storeObject($this, $params);
+        return self::populateResponse($this, $response);
     }
 
     /**
@@ -705,7 +630,7 @@ class Object extends CComponent {
          */
         $params = array('r' => $this->bucket->getR($r));
         Yii::trace('Reloading object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->transport->getObject($this->bucket, $params, $this->key, null);
+        $response = $this->client->transport->fetchObject($this->bucket, $this->key, $params);
         return self::populateResponse($this, $response);
     }
 
@@ -723,7 +648,7 @@ class Object extends CComponent {
          * Get (fetch) multiple objects
          */
         $responses = $client->transport->multiGet(array_keys($objects));
-        array_walk($objects, function(&$object, $url)use(&$responses) {
+        array_walk($objects, function($object, $url)use(&$responses) {
                     Object::populateResponse($object, $responses[$url]);
                 });
         return $objects;
@@ -740,12 +665,13 @@ class Object extends CComponent {
     }
 
     /**
+     * @static
      * @param Object $object
      * @param array $response
      * @return Object
      */
-    public static function populateResponse(Object &$object, $response, $action='fetchObject') {
-        $object->client->transport->populate($object, $object->bucket, $response, $action);
+    public static function populateResponse(Object $object, $response) {
+        $object->client->transport->populate($object, $response);
 
         /**
          * Parse the index and metadata headers
@@ -813,19 +739,9 @@ class Object extends CComponent {
         /**
          * Use defaults if not specified
          */
-        $dw = $this->bucket->getDW($dw);
-
-        /**
-         * Construct the URL
-         */
-        $url = $this->client->transport->buildBucketKeyPath($this->bucket, $this->key, null, array('dw' => $dw));
-
-        /**
-         * Run the operation
-         */
-        Yii::trace('Deleting object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->transport->delete($url);
-        $this->client->transport->populate($this, $this->bucket, $response, 'deleteObject');
+        $params = array('dw'=>$this->bucket->getDW($dw));
+        $response = $this->client->transport->deleteObject($this, $params);
+        $this->client->transport->populate($this, $response);
 
         return $this;
     }
@@ -911,14 +827,14 @@ class Object extends CComponent {
         $params = array('r' => $r, 'vtag' => $vtag);
 
         Yii::trace('Fetching sibling "' . $i . '" of object "' . $this->key . '" from bucket "' . $this->bucket->name . '"', 'ext.riiak.Object');
-        $response = $this->client->transport->getObject($this->bucket, $params, $this->key, null);
+        $response = $this->client->transport->fetchObject($this->bucket, $this->key, $params);
 
         /**
          * Respond with a new object
          */
         $obj = new Object($this->client, $this->bucket, $this->key);
         $obj->jsonize = $this->jsonize;
-        return self::populateResponse($obj, $response, 'getSibling');
+        return self::populateResponse($obj, $response);
     }
 
     /**

@@ -81,6 +81,7 @@ class Curl extends \riiak\transport\Http {
         $ch = curl_init();
         $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $content);
 
+        Yii::trace('Processing HTTP "'.strtoupper($method).'" request to "'.$url.'"', 'ext.riiak.transport.http.curl.processRequest');
         if ($this->client->enableProfiling)
             $profileToken = 'ext.riiak.transport.http.curl.processRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
@@ -262,7 +263,7 @@ class Curl extends \riiak\transport\Http {
          *  Convert input string into array
          *  for example :
          *  Input string is {"keys":[]}{"keys":["admin"]}{"keys":[]}{"keys":["test"]} etc.
-         *  then output wiil be {"keys":[]},{"keys":["admin"]},{"keys":[]},{"keys":["test"]}
+         *  then output will be {"keys":[]},{"keys":["admin"]},{"keys":[]},{"keys":["test"]}
          */
         $arrInput = explode('#,#', str_replace('}{', '}#,#{', $response['body']));
 
@@ -276,7 +277,7 @@ class Curl extends \riiak\transport\Http {
             $data = (array) CJSON::decode($value);
 
             /**
-             *  Check for keys count is greate than 0.
+             *  Check for keys count is greater than 0.
              */
             if (array_key_exists('keys', $data) && 1 < count($data['keys']))
                 $strKeys .= implode('#,#', $data['keys']) . '#,#';

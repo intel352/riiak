@@ -288,7 +288,19 @@ class MapReduce extends CComponent {
          */
         Yii::trace('Running Map/Reduce query', 'ext.riiak.MapReduce');
 
-        $response = $this->client->transport->post($this->client->transport->buildMapReducePath(), array(), $content);
+        $transport = $this->client->transport;
+        $response = $transport->post($transport->buildMapReducePath(), array(), $content);
+
+        /**
+         * Verify that we got one of the expected statuses. Otherwise, throw an exception
+         * @todo Pretty up this exception report, find a way to report sent headers as well
+         */
+        if (!$transport->validateResponse($response, 'mapReduce'))
+            throw new Exception('Expected status ' .
+                implode(' or ', $transport->statusObject->getExpectedStatus('mapReduce')) .
+                ', received ' . $response['headers']['http_code'] . PHP_EOL .
+                'Response: ' . PHP_EOL . \CVarDumper::dumpAsString($response, 10));
+
         $result = CJSON::decode($response['body']);
 
         /**

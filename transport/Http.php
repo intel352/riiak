@@ -3,20 +3,21 @@
 namespace riiak\transport;
 
 use \CJSON,
-    \Exception,
-    \Yii,
-    \CLogger;
+\Exception,
+\Yii,
+\CLogger;
 
 /**
  * The Http object allows you to perform all Riak operation
  * through HTTP protocol
- * @package riiak.transport
+ *
+ * @package            riiak.transport
  *
  * @abstract
  *
- * @method array get() get(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('GET', ...)
- * @method array post() post(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('POST', ...)
- * @method array put() put(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('PUT', ...)
+ * @method array get   () get(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('GET', ...)
+ * @method array post  () post(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('POST', ...)
+ * @method array put   () put(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('PUT', ...)
  * @method array delete() delete(string $url, array $requestHeaders = array(), string $content = '') Alias for processRequest('DELETE', ...)
  */
 abstract class Http extends \riiak\Transport {
@@ -46,17 +47,299 @@ abstract class Http extends \riiak\Transport {
         return parent::__call($name, $parameters);
     }
 
+    public function listBuckets() {
+        /**
+         * Construct URL
+         */
+        $url = $this->buildBucketPath(null, null, array('buckets' => 'true'));
+        Yii::trace('Running listBuckets request', 'ext.riiak.transport.http.listBuckets');
+
+        /**
+         * Run the request
+         */
+        $response = $this->processRequest('GET', $url);
+        if (!$this->validateResponse($response, 'listBuckets'))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus('listBuckets')) . ', received ' . $response['http_code']);
+
+        /**
+         * Return array of bucket names
+         */
+        $body = (array)CJSON::decode($response['body']);
+        if (isset($body['buckets']) && is_array($body['buckets']))
+            return array_map('urldecode', array_unique($body['buckets']));
+        return array();
+    }
+
+    public function listBucketKeys(\riiak\Bucket $bucket) {
+        /**
+         * Fetch the bucket
+         */
+        Yii::trace('Running listKeys request for bucket "' . $bucket->name . '"', 'ext.riiak.transport.http.listKeys');
+        $bucketArr = $this->getBucket($bucket, array('props' => 'false', 'keys' => 'stream'));
+
+        if (isset($bucketArr['keys']) && is_array($bucketArr['keys']))
+            return array_map('urldecode', array_unique($bucketArr['keys']));
+        return array();
+    }
+
+    public function listBucketProps(\riiak\Bucket $bucket) {
+        /**
+         * Fetch the bucket
+         */
+        Yii::trace('Running listProps request for bucket "' . $bucket->name . '"', 'ext.riiak.transport.http.listProps');
+        $bucketArr = $this->getBucket($bucket, array('props' => 'true', 'keys' => 'false'));
+
+        if (isset($bucketArr['props']) && is_array($bucketArr['props']))
+            return array_map('urldecode', array_unique($bucketArr['props']));
+        return array();
+    }
+
+    public function getBucket(\riiak\Bucket $bucket, array $params = array()) {
+        /**
+         * Construct the URL
+         */
+        $url = $this->buildBucketKeyPath($bucket, null, null, $params);
+        Yii::trace('Running getBucket request for bucket "' . $bucket->name . '"', 'ext.riiak.transport.http.getBucket');
+
+        /**
+         * Run the request.
+         */
+        $response = $this->processRequest('GET', $url);
+        if (!$this->validateResponse($response, 'getBucket'))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus('getBucket')) . ', received ' . $response['http_code']);
+
+        /**
+         * Return decoded bucket array
+         */
+        return (array)CJSON::decode($response['body']);
+    }
+
+    public function setBucket(\riiak\Bucket $bucket, array $properties) {
+        /**
+         * Construct the contents
+         */
+        $headers = array('Content-Type: application/json');
+        $content = CJSON::encode(array('props' => $properties));
+
+        /**
+         * Construct the request URL.
+         */
+        $url = $this->buildBucketKeyPath($bucket);
+        Yii::trace('Running setBucket request for bucket "' . $bucket->name . '"', 'ext.riiak.transport.http.setBucket');
+
+        /**
+         * Process request & return response
+         */
+        $response = $this->processRequest('PUT', $url, $headers, $content);
+        if (!$this->validateResponse($response, 'setBucket'))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus('setBucket')) . ', received ' . $response['http_code']);
+
+        return true;
+    }
+
+    public function fetchObject(\riiak\Bucket $bucket, $key, array $params = null) {
+        /**
+         * Construct the URL
+         */
+        $url = $this->buildBucketKeyPath($bucket, $key, null, $params);
+        Yii::trace('Running fetchObject request for bucket "' . $bucket->name . '"', 'ext.riiak.transport.fetchObject');
+
+        /**
+         * Process request.
+         */
+        $response = $this->processRequest('GET', $url);
+        if (!$this->validateResponse($response, 'fetchObject'))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus('fetchObject')) . ', received ' . $response['http_code']);
+
+        /**
+         * Return response
+         */
+        return $response;
+    }
+
+    public function storeObject(\riiak\Object $object, array $params = array()) {
+        /**
+         * Construct the URL
+         */
+        $url    = $this->buildBucketKeyPath($object->bucket, $object->key, null, $params);
+
+        /**
+         * Construct the headers
+         */
+        $headers = array('Accept: text/plain, */*; q=0.5',
+            'Content-Type: ' . $object->getContentType(),
+            'X-Riak-ClientId: ' . $object->client->clientId);
+
+        /**
+         * Add the vclock if it exists
+         */
+        if (!empty($object->vclock))
+            $headers[] = 'X-Riak-Vclock: ' . $object->vclock;
+
+        /**
+         * Add the Links
+         */
+        foreach ($object->links as $link)
+            $headers[] = 'Link: ' . $link->toLinkHeader($object->client);
+
+        /**
+         * Add the auto indexes
+         */
+        if (is_array($object->autoIndexes) && !empty($object->autoIndexes)) {
+            if (!is_array($object->data))
+                throw new Exception('Auto index feature requires that "$object->data" be an array.');
+
+            $collisions = array();
+            foreach ($object->autoIndexes as $index => $fieldName) {
+                $value = null;
+                // look up the value
+                if (isset($object->data[$fieldName])) {
+                    $value     = $object->data[$fieldName];
+                    $headers[] = 'X-Riak-Index-' . $index . ': ' . urlencode($value);
+
+                    // look for value collisions with normal indexes
+                    if (isset($object->indexes[$index]))
+                        if (false !== array_search($value, $object->indexes[$index]))
+                            $collisions[$index] = $value;
+                }
+            }
+
+            $object->meta['client-autoindex']          = count($object->autoIndexes) > 0 ? CJSON::encode($object->autoIndexes) : null;
+            $object->meta['client-autoindexcollision'] = count($collisions) > 0 ? CJSON::encode($collisions) : null;
+        }
+
+        /**
+         * Add the indexes
+         */
+        foreach ($object->indexes as $index => $values)
+            if (is_array($values))
+                $headers[] = 'X-Riak-Index-' . $index . ': ' . implode(', ', array_map('urlencode', $values));
+
+        /**
+         * Add the metadata
+         */
+        foreach ($object->meta as $metaName => $metaValue)
+            if ($metaValue !== null)
+                $headers[] = 'X-Riak-Meta-' . $metaName . ': ' . $metaValue;
+
+        if ($object->jsonize)
+            $content = CJSON::encode($object->data);
+        else
+            $content = $object->data;
+
+        /**
+         * Run the operation
+         */
+        if ($object->key !== null) {
+            Yii::trace('Storing object with key "' . $object->key . '" in bucket "' . $object->bucket->name . '"', 'ext.riiak.Object');
+            $response = $this->put($url, $headers, $content);
+        } else {
+            Yii::trace('Storing new object in bucket "' . $object->bucket->name . '"', 'ext.riiak.Object');
+            $response = $this->post($url, $headers, $content);
+        }
+
+        $action = (isset($params['returnbody']) && $params['returnbody']) ? 'fetchObject' : 'storeObject';
+        if (!$this->validateResponse($response, $action))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus($action)) . ', received ' . $response['http_code']);
+
+        return $response;
+    }
+
+    public function deleteObject(\riiak\Object $object, array $params = array()) {
+        /**
+         * Construct the URL
+         */
+        $url = $this->buildBucketKeyPath($object->bucket, $object->key, null, $params);
+        Yii::trace('Running deleteObject request for object "' . $object->key . '"', 'ext.riiak.transport.deleteObject');
+
+        /**
+         * Process request.
+         */
+        $response = $this->processRequest('DELETE', $url);
+        if (!$this->validateResponse($response, 'deleteObject'))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus('deleteObject')) . ', received ' . $response['http_code']);
+
+        /**
+         * Return response
+         */
+        return $response;
+    }
+
+    /**
+     * @todo Handle multipart/mixed response from linkwalk
+     */
+    public function linkWalk(\riiak\Bucket $bucket, $key, array $links, array $params = null) {
+        /**
+         * Construct the URL
+         */
+        $url = $this->buildBucketKeyPath($bucket, $key, $links, $params);
+        Yii::trace('Running linkWalk request for object "' . $key . '"', 'ext.riiak.transport.linkWalk');
+
+        /**
+         * Process request.
+         */
+        $response = $this->processRequest('GET', $url);
+        if (!$this->validateResponse($response, 'linkWalk'))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus('linkWalk')) . ', received ' . $response['http_code']);
+
+        /**
+         * Return response
+         */
+        return $response;
+    }
+
+    public function mapReduce() {
+        /**
+         * @todo Build out this function
+         */
+    }
+
+    public function secondaryIndex() {
+        /**
+         * @todo Build out this function
+         */
+    }
+
+    public function ping() {
+        Yii::trace('Pinging Riak server', 'ext.riiak.transport.http.ping');
+        $response = $this->processRequest('GET', $this->buildUri('/' . $this->client->pingPrefix));
+        if (!$this->validateResponse($response, 'ping'))
+            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
+                ->getExpectedStatus('ping')) . ', received ' . $response['http_code']);
+
+        return ($response !== NULL) && ($response['body'] == 'OK');
+    }
+
+    public function status() {
+        /**
+         * @todo implement
+         */
+    }
+
+    public function listResources() {
+        /**
+         * @todo implement
+         */
+    }
+
     /**
      * Get status handling class object
      *
-     * @return object http\StatusCodes
+     * @return object http\Status
      */
     public function getStatusObject() {
         /**
          * Check for existing status handling class object
          */
         if (!is_object($this->status))
-            $this->status = new http\StatusCodes();
+            $this->status = new http\Status();
 
         /*
          * Return status class object
@@ -65,10 +348,11 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * Validate Riak response using http\StatusCodes class
+     * Validate Riak response using http\Status class
      *
-     * @param string $response
+     * @param array  $response
      * @param string $action
+     *
      * @return bool
      */
     public function validateResponse($response, $action) {
@@ -85,72 +369,9 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * Get (fetch) an object
-     *
-     * This is renamed from "get", as "get" should be a generic function...
-     * @todo Function is in dire need of refactoring
-     *
-     * @param \riiak\Bucket $bucket
-     * @param array $params
-     * @param string $key
-     * @param array $links
-     * @return array
-     */
-    public function getObject(\riiak\Bucket $bucket, array $params = array(), $key = null, $links = array()) {
-        /**
-         * Construct the URL
-         */
-        $url = $this->buildBucketKeyPath($bucket, $key, $links, $params);
-        Yii::trace('Running getObject request for bucket "' . $bucket->name . '"', 'ext.riiak.transport.httpRequest');
-
-        /**
-         * Process request.
-         */
-        $response = $this->processRequest('GET', $url);
-
-        /**
-         * Remove bulk of empty keys.
-         */
-        $response['body'] = $this->getStreamedBucketKeys($response, $params);
-
-        /**
-         * Return response
-         */
-        return $response;
-    }
-
-    /**
-     * Put (save) an object
-     *
-     * This is renamed from "put", as "put" should be a generic function...
-     *
-     * @param \riiak\Bucket $bucket
-     * @param string $headers
-     * @param string $content
-     * @param string $url
-     * @return array $response
-     */
-    public function putObject(\riiak\Bucket $bucket = NULL, $headers = NULL, $content = '', $url = '') {
-        /**
-         * Construct the request URL.
-         */
-        if ($url == '')
-            $url = $this->buildBucketKeyPath($bucket);
-
-        /**
-         * Process request.
-         */
-        $response = $this->processRequest('PUT', $url, $headers, $content);
-
-        /**
-         * Return Riak response
-         */
-        return $response;
-    }
-
-    /**
      * @param string $appendPath optional
-     * @param array $params optional
+     * @param array  $params     optional
+     *
      * @return string
      */
     public function buildMapReducePath($appendPath = NULL, array $params = NULL) {
@@ -169,10 +390,11 @@ abstract class Http extends \riiak\Transport {
      * @author Eric Stevens <estevens@taglabsinc.com>
      *
      * @param \riiak\Bucket $bucket
-     * @param string $index Index name and type (e.g. - 'indexName_bin')
-     * @param string|int $start Starting value or exact match if no end value
-     * @param string|int $end optional Ending value for range search
-     * @param array $params optional Any extra query parameters
+     * @param string        $index  Index name and type (e.g. - 'indexName_bin')
+     * @param string|int    $start  Starting value or exact match if no end value
+     * @param string|int    $end    optional Ending value for range search
+     * @param array         $params optional Any extra query parameters
+     *
      * @return string
      */
     public function buildBucketIndexPath(\riiak\Bucket $bucket, $index, $start, $end = NULL, array $params = NULL) {
@@ -188,9 +410,10 @@ abstract class Http extends \riiak\Transport {
      * Builds URL for Riak bucket/keys query
      *
      * @param \riiak\Bucket $bucket
-     * @param string $key optional
-     * @param array $links optional
-     * @param array $params optional
+     * @param string        $key    optional
+     * @param array         $links  optional
+     * @param array         $params optional
+     *
      * @return string
      */
     public function buildBucketKeyPath(\riiak\Bucket $bucket, $key = NULL, array $links = NULL, array $params = NULL) {
@@ -217,9 +440,10 @@ abstract class Http extends \riiak\Transport {
     /**
      * Builds URL for Riak bucket query
      *
-     * @param \riiak\Bucket $bucket optional
-     * @param string $appendPath optional
-     * @param array $params optional
+     * @param \riiak\Bucket $bucket     optional
+     * @param string        $appendPath optional
+     * @param array         $params     optional
+     *
      * @return string
      */
     public function buildBucketPath(\riiak\Bucket $bucket = NULL, $appendPath = NULL, array $params = NULL) {
@@ -244,7 +468,8 @@ abstract class Http extends \riiak\Transport {
      * Generic method for building uri
      *
      * @param string $path
-     * @param array $params optional
+     * @param array  $params optional
+     *
      * @return string
      */
     public function buildUri($path, array $params = NULL) {
@@ -262,10 +487,11 @@ abstract class Http extends \riiak\Transport {
     /**
      * Returns process headers along with status code & body
      *
-     * @param int $httpCode
+     * @param int    $httpCode
      * @param string $headers
      * @param string $body
-     * @return array[headers,body]
+     *
+     * @return array[http_code,headers,body]
      */
     public function processResponse($httpCode, $headers, $body) {
         $headers = $this->processHeaders($headers);
@@ -277,16 +503,22 @@ abstract class Http extends \riiak\Transport {
      * Parse HTTP header string into an assoc array
      *
      * @param string $headers
+     *
      * @return array
      */
     public function processHeaders($headers) {
         $retVal = array();
         $fields = array_filter(explode("\r\n", preg_replace('/\x0D\x0A[\x09\x20]+/', ' ', $headers)));
         foreach ($fields as $field) {
-            if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
+            if (preg_match('@^HTTP/1\.1\s+(\d+\s+[\w\s]+)@', $field, $match)) {
+                if (isset($retVal['http_status']))
+                    $retVal['http_status'] = array_merge((array)$retVal['http_status'], (array)trim($match[1]));
+                else
+                    $retVal['http_status'] = trim($match[1]);
+            } elseif (preg_match('/([^:]+): (.+)/m', $field, $match)) {
                 $match[1] = preg_replace('/(?<=^|[\x09\x20\x2D])./e', 'strtoupper("\0")', strtolower(trim($match[1])));
                 if (isset($retVal[$match[1]]))
-                    $retVal[$match[1]] = array($retVal[$match[1]], $match[2]);
+                    $retVal[$match[1]] = array_merge((array)$retVal[$match[1]], (array)trim($match[2]));
                 else
                     $retVal[$match[1]] = trim($match[2]);
             }
@@ -306,42 +538,12 @@ abstract class Http extends \riiak\Transport {
     }
 
     /**
-     * Return array of Bucket objects
-     *
-     * @return array
-     */
-    public function getBuckets() {
-        Yii::trace('Fetching list of buckets', 'ext.riiak.transport.http');
-        /**
-         * Construct URL
-         */
-        $url = $this->buildBucketPath(null, null, array('buckets' => 'true'));
-
-        /**
-         * Send request to fetch buckets.
-         */
-        $response = $this->processRequest('GET', $url);
-        $responseObj = (array) CJSON::decode($response['body']);
-        $buckets = array();
-
-        /**
-         * Prepare loop to process bucket list.
-         */
-        foreach ($responseObj['buckets'] as $name)
-            $buckets[] = $this->client->bucket($name);
-
-        /**
-         * Return bucket array.
-         */
-        return $buckets;
-    }
-
-    /**
      * Get (fetch) multiple objects
      *
-     * @param array $urls
-     * @param array $requestHeaders
+     * @param array  $urls
+     * @param array  $requestHeaders
      * @param string $content
+     *
      * @return array
      */
     abstract public function multiGet(array $urls, array $requestHeaders = array(), $content = '');
@@ -350,56 +552,23 @@ abstract class Http extends \riiak\Transport {
      * Populates the object. Only for internal use
      *
      * @param \riiak\Object $object
-     * @param \riiak\Bucket $bucket
-     * @param array $response Output of transport layer processing
-     * @param string $action Action label (used to fetch expected statuses)
+     * @param array         $response Output of transport layer processing
+     *
      * @return \riiak\Object
      */
-    public function populate(\riiak\Object $object, \riiak\Bucket $bucket, array $response = array(), $action = '') {
-        /**
-         * Check for allowed response status list.
-         */
-        $expectedStatuses = $this->getStatusObject()->getExpectedStatus($action);
-
-        if (0 >= count($expectedStatuses))
-            $expectedStatuses = array(200, 201, 300);
-
-        /**
-         * Check for riiak\Object class object
-         */
-        if (!is_object($object))
-            $object = new \riiak\Object($this->client, $bucket);
-
+    public function populate(\riiak\Object $object, array $response = array()) {
         $object->clear();
-
-        /**
-         * If no response given, then return
-         */
-        if (is_null($response))
-            return $this;
 
         /**
          * Update the object
          */
         $object->headers = $response['headers'];
-        $object->data = $response['body'];
-
-        /**
-         * Check if the server is down (status==0)
-         */
-        if ($object->status == 0)
-            throw new Exception('Could not contact Riak Server: ' . $this->baseUrl() . '!');
-
-        /**
-         * Verify that we got one of the expected statuses. Otherwise, throw an exception
-         */
-        if (!$this->validateResponse($response, $action))
-            throw new Exception('Expected status ' . implode(' or ', $expectedStatuses) . ', received ' . $object->status);
+        $object->data    = $response['body'];
 
         /**
          * If 404 (Not Found), then clear the object
          */
-        if ($object->status == 404) {
+        if ($object->httpCode == 404) {
             $object->clear();
             return $object;
         }
@@ -418,23 +587,21 @@ abstract class Http extends \riiak\Transport {
         /**
          * If 300 (siblings), load first sibling, store the rest
          */
-        if ($object->status == 300) {
+        if ($object->httpCode == 300) {
             $siblings = explode("\n", trim($object->data));
             array_shift($siblings); # Get rid of 'Siblings:' string.
             $object->siblings = $siblings;
-            $object->exists = true;
+            $object->exists   = true;
             return $object;
-        }
-
-        if ($object->status == 201) {
-            $pathParts = explode('/', $object->headers['location']);
+        }elseif ($object->httpCode == 201) {
+            $pathParts   = explode('/', $object->headers['location']);
             $object->key = array_pop($pathParts);
         }
 
         /**
          * Possibly JSON decode
          */
-        if (($object->status == 200 || $object->status == 201) && $object->jsonize)
+        if (($object->httpCode == 200 || $object->httpCode == 201) && $object->jsonize)
             $object->data = CJSON::decode($object->data, true);
 
         return $object;

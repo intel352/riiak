@@ -181,7 +181,7 @@ class Riiak extends CApplicationComponent {
     public function buckets() {
         Yii::log('Bucket listing is a very intensive operation, and should never occur in production!', \CLogger::LEVEL_WARNING);
         Yii::trace('Fetching list of buckets', 'ext.riiak.Riiak');
-        return $this->transport->getBuckets($this);
+        return array_map(array($this, 'bucket'), $this->transport->listBuckets());
     }
 
     /**
