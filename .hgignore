@@ -4,3 +4,4 @@
 \.chg\..*$
 \.rej$
 \.conflict\~$
+\.svn/
