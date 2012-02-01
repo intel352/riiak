@@ -58,9 +58,7 @@ abstract class Http extends \riiak\Transport {
          * Run the request
          */
         $response = $this->processRequest('GET', $url);
-        if (!$this->validateResponse($response, 'listBuckets'))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus('listBuckets')) . ', received ' . $response['http_code']);
+        $this->validateResponse($response, 'listBuckets');
 
         /**
          * Return array of bucket names
@@ -106,9 +104,7 @@ abstract class Http extends \riiak\Transport {
          * Run the request.
          */
         $response = $this->processRequest('GET', $url);
-        if (!$this->validateResponse($response, 'getBucket'))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus('getBucket')) . ', received ' . $response['http_code']);
+        $this->validateResponse($response, 'getBucket');
 
         /**
          * Return decoded bucket array
@@ -133,9 +129,7 @@ abstract class Http extends \riiak\Transport {
          * Process request & return response
          */
         $response = $this->processRequest('PUT', $url, $headers, $content);
-        if (!$this->validateResponse($response, 'setBucket'))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus('setBucket')) . ', received ' . $response['http_code']);
+        $this->validateResponse($response, 'setBucket');
 
         return true;
     }
@@ -151,9 +145,16 @@ abstract class Http extends \riiak\Transport {
          * Process request.
          */
         $response = $this->processRequest('GET', $url);
-        if (!$this->validateResponse($response, 'fetchObject'))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus('fetchObject')) . ', received ' . $response['http_code']);
+        try {
+            $this->validateResponse($response, 'fetchObject');
+        }catch(\Exception $e) {
+            /**
+             * Allow 404 for missing objects
+             * @todo Perhaps 404 should still toss exception?
+             */
+            if($e->getCode()!='404')
+                throw $e;
+        }
 
         /**
          * Return response
@@ -243,9 +244,7 @@ abstract class Http extends \riiak\Transport {
         }
 
         $action = (isset($params['returnbody']) && $params['returnbody']) ? 'fetchObject' : 'storeObject';
-        if (!$this->validateResponse($response, $action))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus($action)) . ', received ' . $response['http_code']);
+        $this->validateResponse($response, $action);
 
         return $response;
     }
@@ -261,9 +260,7 @@ abstract class Http extends \riiak\Transport {
          * Process request.
          */
         $response = $this->processRequest('DELETE', $url);
-        if (!$this->validateResponse($response, 'deleteObject'))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus('deleteObject')) . ', received ' . $response['http_code']);
+        $this->validateResponse($response, 'deleteObject');
 
         /**
          * Return response
@@ -285,9 +282,7 @@ abstract class Http extends \riiak\Transport {
          * Process request.
          */
         $response = $this->processRequest('GET', $url);
-        if (!$this->validateResponse($response, 'linkWalk'))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus('linkWalk')) . ', received ' . $response['http_code']);
+        $this->validateResponse($response, 'linkWalk');
 
         /**
          * Return response
@@ -310,9 +305,7 @@ abstract class Http extends \riiak\Transport {
     public function ping() {
         Yii::trace('Pinging Riak server', 'ext.riiak.transport.http.ping');
         $response = $this->processRequest('GET', $this->buildUri('/' . $this->client->pingPrefix));
-        if (!$this->validateResponse($response, 'ping'))
-            throw new Exception('Expected status ' . implode(' or ', $this->getStatusObject()
-                ->getExpectedStatus('ping')) . ', received ' . $response['http_code']);
+        $this->validateResponse($response, 'ping');
 
         return ($response !== NULL) && ($response['body'] == 'OK');
     }
@@ -352,11 +345,24 @@ abstract class Http extends \riiak\Transport {
      *
      * @param array  $response
      * @param string $action
-     *
-     * @return bool
+     * @throws \Exception
      */
     public function validateResponse($response, $action) {
-        return $this->getStatusObject()->validateStatus($response, $action);
+        if(!$this->getStatusObject()->validateStatus($response, $action)) {
+            $httpCode = $response['headers']['http_code'];
+            $httpStatus = $response['headers']['http_status'];
+
+            $errorMsg = (is_array($httpStatus) ? implode(', ', $httpStatus) : $httpStatus) . ' - ';
+            /**
+             * Check for error definitions
+             */
+            if (array_key_exists($httpCode, $this->getStatusObject()->errorCodes[$action]))
+                $errorMsg .= $this->getStatusObject()->errorCodes[$action][$httpCode];
+            else
+                $errorMsg .= 'An undefined error has occurred!';
+
+            throw new Exception($errorMsg, $httpCode);
+        }
     }
 
     /**
@@ -491,7 +497,7 @@ abstract class Http extends \riiak\Transport {
      * @param string $headers
      * @param string $body
      *
-     * @return array[http_code,headers,body]
+     * @return array[headers,body]
      */
     public function processResponse($httpCode, $headers, $body) {
         $headers = $this->processHeaders($headers);

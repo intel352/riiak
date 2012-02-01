@@ -131,7 +131,7 @@ abstract class Transport extends CComponent {
      *
      * @param string $response
      * @param string $action
-     * @return bool
+     * @throws \Exception
      */
     abstract public function validateResponse($response, $action);
 

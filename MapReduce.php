@@ -234,7 +234,7 @@ class MapReduce extends CComponent {
      * Run the map/reduce operation. Returns array of results
      * or Link objects if last phase is link phase
      *
-     * @param integer $timeout Timeout in seconds. Default: null
+     * @param integer $timeout optional Timeout in milliseconds. Riak default is 60000 (60s).
      * @return array
      */
     public function run($timeout = null) {
@@ -293,13 +293,13 @@ class MapReduce extends CComponent {
 
         /**
          * Verify that we got one of the expected statuses. Otherwise, throw an exception
-         * @todo Pretty up this exception report, find a way to report sent headers as well
          */
-        if (!$transport->validateResponse($response, 'mapReduce'))
-            throw new Exception('Expected status ' .
-                implode(' or ', $transport->statusObject->getExpectedStatus('mapReduce')) .
-                ', received ' . $response['headers']['http_code'] . PHP_EOL .
-                'Response: ' . PHP_EOL . \CVarDumper::dumpAsString($response, 10));
+        try {
+            $transport->validateResponse($response, 'mapReduce');
+        }catch(\Exception $e) {
+            throw new \Exception($e . PHP_EOL . PHP_EOL . 'Job Request: '. $content . PHP_EOL . PHP_EOL
+                . 'Response: '. \CVarDumper::dumpAsString($response), $e->getCode(), $e);
+        }
 
         $result = CJSON::decode($response['body']);
 

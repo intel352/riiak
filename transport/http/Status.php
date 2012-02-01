@@ -2,11 +2,6 @@
 
 namespace riiak\transport\http;
 
-use \CJSON,
-    \Exception,
-    \Yii,
-    \CLogger;
-
 /**
  * Status Object allows you to validate all Riak operation
  * responses.
@@ -21,7 +16,7 @@ class Status extends \riiak\transport\Status {
      *
      * @var array
      */
-    protected $expectedStatus = array(
+    public $expectedStatus = array(
         'listBuckets' => array('200'),
         'getBucketProperties' => array('200'),
         'setBucketProperties' => array('204'),
@@ -41,7 +36,7 @@ class Status extends \riiak\transport\Status {
      *
      * @var array
      */
-    protected $errorCodes = array(
+    public $errorCodes = array(
         'setBucketProperties' => array(
             '400' => 'Submitted JSON is invalid',
             '415' => 'The Content-Type was not set to application/json in the request'
@@ -85,23 +80,10 @@ class Status extends \riiak\transport\Status {
      * @return bool
      */
     public function validateStatus(array $response, $action) {
-        $httpCode = $response['headers']['http_code'];
-        $httpStatus = $response['headers']['http_status'];
-
         /**
          * Check for normal status codes
          */
-        if (!in_array($httpCode, $this->getExpectedStatus($action))) {
-            $errorMsg = (is_array($httpStatus) ? implode(', ', $httpStatus) : $httpStatus) . ' - ';
-            /**
-             * Check for error definitions
-             */
-            if (array_key_exists($httpCode, $this->errorCodes[$action]))
-                $errorMsg .= $this->errorCodes[$action][$httpCode];
-            else
-                $errorMsg .= 'An undefined error has occurred!';
-
-            Yii::log($errorMsg, CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.status.validateStatus');
+        if (!in_array($response['headers']['http_code'], $this->getExpectedStatus($action))) {
             return false;
         }
         return true;
