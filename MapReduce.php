@@ -234,7 +234,7 @@ class MapReduce extends CComponent {
      * Run the map/reduce operation. Returns array of results
      * or Link objects if last phase is link phase
      *
-     * @param integer $timeout Timeout in seconds. Default: null
+     * @param integer $timeout optional Timeout in milliseconds. Riak default is 60000 (60s).
      * @return array
      */
     public function run($timeout = null) {
@@ -288,7 +288,19 @@ class MapReduce extends CComponent {
          */
         Yii::trace('Running Map/Reduce query', 'ext.riiak.MapReduce');
 
-        $response = $this->client->transport->post($this->client->transport->buildMapReducePath(), array(), $content);
+        $transport = $this->client->transport;
+        $response = $transport->post($transport->buildMapReducePath(), array(), $content);
+
+        /**
+         * Verify that we got one of the expected statuses. Otherwise, throw an exception
+         */
+        try {
+            $transport->validateResponse($response, 'mapReduce');
+        }catch(\Exception $e) {
+            throw new \Exception($e . PHP_EOL . PHP_EOL . 'Job Request: '. $content . PHP_EOL . PHP_EOL
+                . 'Response: '. \CVarDumper::dumpAsString($response), $e->getCode(), $e);
+        }
+
         $result = CJSON::decode($response['body']);
 
         /**

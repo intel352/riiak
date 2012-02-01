@@ -81,9 +81,9 @@ class Bucket extends CComponent {
      * @return int
      */
     public function getR($r = null) {
-        if ($r != null)
+        if ($r !== null)
             return $r;
-        if ($this->_r != null)
+        if ($this->_r !== null)
             return $this->_r;
         return $this->client->r;
     }
@@ -106,10 +106,10 @@ class Bucket extends CComponent {
      * @param int $w Optional: The W-Value to be returned if not null
      * @return int
      */
-    public function getW($w) {
-        if ($w != null)
+    public function getW($w=null) {
+        if ($w !== null)
             return $w;
-        if ($this->_w != null)
+        if ($this->_w !== null)
             return $this->_w;
         return $this->client->w;
     }
@@ -132,10 +132,10 @@ class Bucket extends CComponent {
      * @param int $dw Optional: The DW-Value to be returned if not null
      * @return int
      */
-    public function getDW($dw) {
-        if ($dw != null)
+    public function getDW($dw=null) {
+        if ($dw !== null)
             return $dw;
-        if ($this->_dw != null)
+        if ($this->_dw !== null)
             return $this->_dw;
         return $this->client->dw;
     }
@@ -295,26 +295,8 @@ class Bucket extends CComponent {
      * @return Bucket
      */
     public function setProperties(array $props) {
-        /**
-         * Construct the Contents
-         */
-        $content = CJSON::encode(array('props' => $props));
-
-        /**
-         * Run the request
-         */
         Yii::trace('Setting Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-        $headers = array('Content-Type: application/json');
-        $response = $this->client->transport->putObject($this, $headers, $content);
-
-        /**
-         * Use a Object to interpret the response, we are just interested in the value
-         */
-        $obj = new Object($this->client, $this);
-        $this->client->transport->populate($obj, $this, $response, 'setBucketProperties');
-
-        if (!$obj->exists)
-            throw new Exception('Error setting bucket properties.');
+        $this->client->transport->setBucket($this, array('props'=>$props));
 
         $this->_properties = null;
 
@@ -329,11 +311,11 @@ class Bucket extends CComponent {
      */
     public function getProperties($refresh = false) {
         if ($refresh || !is_array($this->_properties)) {
-            Yii::trace('Fetching Bucket properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-            $obj = $this->fetchBucketProperties(array('props' => 'true', 'keys' => 'false'));
-            if(empty($obj->data['props']))
+            Yii::trace('Fetching properties for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+            $props = $this->client->transport->listBucketProps($this);
+            if(empty($props))
                 return array();
-            $this->_properties = $obj->data['props'];
+            $this->_properties = $props;
         }
         return $this->_properties;
     }
@@ -348,41 +330,10 @@ class Bucket extends CComponent {
     public function getKeys($refresh = false) {
         if ($refresh || !is_array($this->_keys)) {
             Yii::log('Bucket key listing is a very intensive operation, and should never occur in production!', \CLogger::LEVEL_WARNING);
-            Yii::trace('Fetching Bucket keys for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
-            /**
-             * Non-null key param will prompt format of /buckets/BUCKET/keys/
-             */
-            $obj = $this->fetchBucketProperties(array('props' => 'false', 'keys' => 'stream'), '');
-            if (empty($obj->data['keys']))
-                return array();
-            $this->_keys = array_map('urldecode', array_unique($obj->data['keys']));
+            Yii::trace('Fetching keys for bucket "' . $this->name . '"', 'ext.riiak.Bucket');
+            $this->_keys = $this->client->transport->listBucketKeys($this);
         }
         return $this->_keys;
-    }
-
-    /**
-     * Fetches bucket properties
-     *
-     * @param array $params
-     * @param string $key
-     * @return \riiak\Object
-     */
-    protected function fetchBucketProperties(array $params = array(), $key = null) {
-        /**
-         * Run the request
-         */
-        $response = $this->client->transport->getObject($this, $params, $key);
-
-        /**
-         * Use a Object to interpret the response, we are just interested in the value
-         */
-        $obj = new Object($this->client, $this);
-        $this->client->transport->populate($obj, $this, $response, 'getBucketProperties');
-
-        if (!$obj->exists)
-            throw new Exception('Error getting bucket properties.');
-
-        return $obj;
     }
 
     /**
@@ -399,7 +350,7 @@ class Bucket extends CComponent {
         $url = $this->client->transport->buildBucketIndexPath($this, $name . '_' . $type, $startOrExact, $end);
         $response = $this->client->transport->get($url);
 
-        $obj = Object::populateResponse(new Object($this->client, $this), $response);
+        $obj = Object::populateResponse(new Object($this->client, $this), $response, 'secondaryIndex');
         if (!$obj->exists)
             throw new Exception('Error searching index.');
 

@@ -14,59 +14,35 @@ use \CJSON,
  * @abstract
  */
 abstract class Status {
-    
+
     /**
-     * List of normal codes for Riak operations
-     * 
-     * @var array 
+     * List of Expected status codes for Riak operations
+     *
+     * @var array
      */
-    protected $normalCodes;
-    
+    protected $expectedStatus;
+
     /**
      * List of Error codes for Riak operations
      * 
      * @var array 
      */
     protected $errorCodes;
-    
-    /**
-     * List of Expected status codes for Riak operations
-     * 
-     * @var array 
-     */
-    protected $expectedStatus;
 
     /**
-     * Validate Riak response
-     * 
-     * @param string $response
+     * Handle Riak response
+     *
+     * @param array $response
      * @param string $action
      * @return bool 
      */
-    abstract public function validateStatus($response, $action);
-    
-    /**
-     * Handle Riak response
-     * 
-     * @param string $status
-     * @param string $index
-     * @return bool 
-     */
-    abstract public function handleResponse($status, $index);
-    
-    /**
-     * Get Riak response status code
-     * 
-     * @param string $response
-     * @return string 
-     */
-    abstract public function getResponseStatus($response);
-    
+    abstract public function validateStatus(array $response, $action);
+
     /**
      * Get expected status codes for Riak operation
      * 
      * @param string $action
      * @return array 
      */
-    abstract public function getExpectedStatus($action = '');
+    abstract public function getExpectedStatus($action);
 }

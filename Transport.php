@@ -10,6 +10,10 @@ use \CComponent,
 /**
  * Contains transport layer actions of Riak
  * @package riiak
+ *
+ * @property-read bool $isAlive
+ * @property-read array $riakConfiguration
+ * @property-read \riiak\transport\Status $statusObject
  */
 abstract class Transport extends CComponent {
 
@@ -29,29 +33,51 @@ abstract class Transport extends CComponent {
     }
 
     /**
-     * Builds URL to connect to Riak server
-     *
-     * @return string
-     */
-    #abstract public function buildUrl();
-
-    /**
-     * Builds a REST URL to access Riak API
-     *
-     * @param object $bucket
-     * @param string $key
-     * @param string $spec
-     * @param array $params
-     * @return string
-     */
-    #abstract public function buildRestPath(Bucket $bucket = NULL, $key = NULL, $spec = NULL, array $params = NULL);
-
-    /**
-     * Return array of Bucket objects
+     * Return array of Bucket names
      *
      * @return array
      */
-    abstract public function getBuckets();
+    abstract public function listBuckets();
+
+    /**
+     * Return array of Bucket's object keys
+     *
+     * @return array
+     */
+    abstract public function listBucketKeys(\riiak\Bucket $bucket);
+    abstract public function listBucketProps(\riiak\Bucket $bucket);
+
+    /**
+     * Fetches Bucket object
+     *
+     * @return array
+     */
+    abstract public function getBucket(\riiak\Bucket $bucket, array $params = array());
+
+    /**
+     * Updates (sets) Bucket object
+     *
+     * @return array
+     */
+    abstract public function setBucket(\riiak\Bucket $bucket, array $properties);
+
+    abstract public function fetchObject(\riiak\Bucket $bucket, $key, array $params = null);
+
+    abstract public function storeObject(\riiak\Object $object, array $params = array());
+
+    abstract public function deleteObject(\riiak\Object $object, array $params = array());
+
+    abstract public function linkWalk(\riiak\Bucket $bucket, $key, array $links, array $params = null);
+
+    abstract public function mapReduce();
+
+    abstract public function secondaryIndex();
+
+    abstract public function ping();
+
+    abstract public function status();
+
+    abstract public function listResources();
 
     /**
      * Check if Riak server is alive
@@ -59,46 +85,6 @@ abstract class Transport extends CComponent {
      * @return bool
      */
     abstract public function getIsAlive();
-
-    /**
-     * Get (fetch) an object
-     *
-     * @param \riiak\Bucket $bucket
-     * @param array $params
-     * @param string $key
-     * @param string $spec
-     * @return array
-     */
-    #abstract public function get(Bucket $bucket = NULL, array $params = array(), $key = null, $spec = null);
-
-    /**
-     * Put (save) an object
-     *
-     * @param \riiak\Bucket $bucket
-     * @param array $params
-     * @return array $response
-     */
-    #abstract public function put(Bucket $bucket = NULL, $headers = NULL, $contents = '');
-
-    /**
-     * Method to store object in Riak.
-     *
-     * @param string $url
-     * @param array $params
-     * @param string $headers
-     * @return array
-     */
-    #abstract public function post($url = NULL, array $params = array(), $headers = '');
-
-    /**
-     * Method to delete object in Riak.
-     *
-     * @param string $url
-     * @param array $params
-     * @param string $headers
-     * @return array
-     */
-    #abstract public function delete(Bucket $bucket = NULL, $key = '', array $params = array(), $headers = '');
 
     /**
      * Executes request, returns named array(headers, body) of request, or null on error
@@ -145,12 +131,12 @@ abstract class Transport extends CComponent {
      *
      * @param string $response
      * @param string $action
-     * @return bool
+     * @throws \Exception
      */
     abstract public function validateResponse($response, $action);
 
     /**
-     * Get staus handling class object
+     * Get status handling class object
      *
      * @return object http\Status
      */
