@@ -29,6 +29,8 @@ class Curl extends \riiak\transport\Http {
         $curlOptions = array(
             CURLOPT_URL => $url,
             CURLOPT_HTTPHEADER => $requestHeaders,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => -1, // follow all redirects
         );
         switch ($method) {
             case 'GET':
@@ -59,7 +61,11 @@ class Curl extends \riiak\transport\Http {
      */
     public function readableCurlOpts(array $curlOpts) {
         $constants = get_defined_constants(true);
-        $curlConstants = array_flip(array_intersect_key(array_flip($constants['curl']), $curlOpts));
+        /**
+         * Ensure that we're only comparing against CURLOPT constants, due to overlaps in numeric codes
+         */
+        $curlOptConstants = array_intersect_key($constants['curl'], array_flip(preg_filter('/^CURLOPT\_/','$0',array_keys($constants['curl']))));
+        $curlConstants = array_intersect($curlOptConstants,array_keys($curlOpts));
         return array_map(function($const)use($curlOpts) {
                             return $curlOpts[$const];
                         }, $curlConstants);
@@ -82,6 +88,7 @@ class Curl extends \riiak\transport\Http {
         $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $content);
 
         Yii::trace('Processing HTTP "'.strtoupper($method).'" request to "'.$url.'"', 'ext.riiak.transport.http.curl.processRequest');
+        \CVarDumper::dump($curlOpts, 10, true);
         if ($this->client->enableProfiling)
             $profileToken = 'ext.riiak.transport.http.curl.processRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
