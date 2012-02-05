@@ -88,7 +88,6 @@ class Curl extends \riiak\transport\Http {
         $curlOpts = $this->buildCurlOpts($method, $url, $requestHeaders, $content);
 
         Yii::trace('Processing HTTP "'.strtoupper($method).'" request to "'.$url.'"', 'ext.riiak.transport.http.curl.processRequest');
-        \CVarDumper::dump($curlOpts, 10, true);
         if ($this->client->enableProfiling)
             $profileToken = 'ext.riiak.transport.http.curl.processRequest(' . \CVarDumper::dumpAsString($this->readableCurlOpts($curlOpts)) . ')';
 
