@@ -243,7 +243,9 @@ abstract class Http extends \riiak\Transport {
             $response = $this->post($url, $headers, $content);
         }
 
-        $action = (isset($params['returnbody']) && $params['returnbody']) ? 'fetchObject' : 'storeObject';
+        $action = array('storeObject');
+        if (isset($params['returnbody']) && $params['returnbody'])
+            array_push($action, 'fetchObject');
         $this->validateResponse($response, $action);
 
         return $response;
@@ -344,11 +346,20 @@ abstract class Http extends \riiak\Transport {
      * Validate Riak response using http\Status class
      *
      * @param array  $response
-     * @param string $action
+     * @param string|array $action Action or array of possible actions for which any related status is valid
      * @throws \Exception
      */
     public function validateResponse($response, $action) {
-        if(!$this->getStatusObject()->validateStatus($response, $action)) {
+        $action = (array) $action;
+        $statusObject = $this->getStatusObject();
+        $validated = array_filter($action, function($action)use($response, $statusObject){
+            return $statusObject->validateStatus($response, $action);
+        });
+
+        /**
+         * If $validated is empty, no status was valid...
+         */
+        if($validated == array()) {
             $httpCode = $response['headers']['http_code'];
             $httpStatus = $response['headers']['http_status'];
 
@@ -356,10 +367,16 @@ abstract class Http extends \riiak\Transport {
             /**
              * Check for error definitions
              */
-            if (array_key_exists($httpCode, $this->getStatusObject()->errorCodes[$action]))
-                $errorMsg .= $this->getStatusObject()->errorCodes[$action][$httpCode];
-            else
-                $errorMsg .= 'An undefined error has occurred!';
+            $actionErrors = array_map(function($action)use($statusObject, $httpCode){
+                $errorMsg = $action.' failed with reason: ';
+                if (array_key_exists($httpCode, $statusObject->errorCodes[$action]))
+                    $errorMsg .= $statusObject->errorCodes[$action][$httpCode];
+                else
+                    $errorMsg .= 'An undefined error has occurred!';
+                return $errorMsg;
+            }, $action);
+
+            $errorMsg .= implode(' -OR- ', $actionErrors);
 
             throw new Exception($errorMsg, $httpCode);
         }
