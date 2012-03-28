@@ -167,6 +167,7 @@ abstract class Http extends \riiak\Transport {
          * Construct the URL
          */
         $url    = $this->buildBucketKeyPath($object->bucket, $object->key, null, $params);
+        Yii::trace('Running storeObject request for bucket "'. $object->bucket->name .'", object with key "' . $object->key . '"', 'ext.riiak.transport.storeObject');
 
         /**
          * Construct the headers
