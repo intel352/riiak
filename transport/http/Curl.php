@@ -110,29 +110,31 @@ class Curl extends \riiak\transport\Http {
                 };
 
         curl_setopt_array($ch, $curlOpts);
-        try {
-            if ($this->client->enableProfiling)
-                Yii::beginProfile($profileToken, 'ext.riiak.transport.http.curl.processRequest');
+        if ($this->client->enableProfiling)
+            Yii::beginProfile($profileToken, 'ext.riiak.transport.http.curl.processRequest');
 
-            /**
-             * Run the request
-             */
-            curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
+        /**
+         * Run the request
+         */
+        if(false===curl_exec($ch)) {
             if ($this->client->enableProfiling)
                 Yii::endProfile($profileToken, 'ext.riiak.transport.http.curl.processRequest');
 
-            /**
-             * Return curl response.
-             */
-            return $this->processResponse($httpCode, $responseHeadersIO, $responseBodyIO);
-        } catch (Exception $e) {
-            curl_close($ch);
-            Yii::log($e->getMessage(), CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.curl.processRequest');
-            return NULL;
+            $errMsg = 'Curl error('. curl_errno($ch) .'): '. curl_error($ch);
+            Yii::log($errMsg, CLogger::LEVEL_ERROR, 'ext.riiak.transport.http.curl.processRequest');
+
+            throw new Exception($errMsg, curl_errno($ch));
         }
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($this->client->enableProfiling)
+            Yii::endProfile($profileToken, 'ext.riiak.transport.http.curl.processRequest');
+
+        /**
+         * Return curl response.
+         */
+        return $this->processResponse($httpCode, $responseHeadersIO, $responseBodyIO);
     }
 
     /**
