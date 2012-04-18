@@ -5,3 +5,5 @@
 \.rej$
 \.conflict\~$
 \.svn/
+\.idea/
+nbproject/
